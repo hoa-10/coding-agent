@@ -1,0 +1,5 @@
+{
+  "task": "Train a simple classifier on dataset X",
+  "goal": "Optimize validation accuracy",
+  "initial_constraints": "Use only sklearn, no deep learning"
+}
