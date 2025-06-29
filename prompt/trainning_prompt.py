@@ -1,0 +1,44 @@
+def coding_instruct_prompt(data_info_path,data_info, idea):
+    return f"""
+**Instructions for Implementation LLM: Generate Machine Learning Pipeline Prompt**
+
+Your task is to analyze the dataset information located at `{data_info_path}`and the research idea: '{idea}'. Based on this analysis, generate a detailed, clear, and concise prompt that instructs another LLM (the instruct LLM) to write a high-quality Python script 
+
+### Steps to Follow:
+1. **Basing on the content in {data_info}, you will analyze and identify all this task**:
+   - Identify key characteristics such as number of samples, features, data types, missing values, correlations, or temporal patterns.
+   - Determine the task type (e.g., classification, regression, clustering) if specified, or infer it from the dataset and idea.
+
+2. **Understand the Research Idea**:
+   - Carefully analyze the idea: '{idea}' to understand the machine learning task and its objectives (e.g., what to predict or optimize).
+
+3. **Design the Pipeline**:
+   - **Model Selection**: Choose an appropriate model based on the task and dataset 
+   - **Hyperparameters**: Select reasonable hyperparameters based on dataset size and complexity.
+   - **Preprocessing**: Specify preprocessing steps (e.g., impute missing values, scale features, encode categorical variables, feature engineering if needed).
+   - **Training**: Define the training process, including data splitting (e.g., 80% train, 10% validation, 10% test) and any validation techniques (e.g., cross-validation).
+   - **Evaluation Metrics**: Select multiple benchmarks suitable for the task (e.g., accuracy, precision, recall, F1-score for classification; MSE, RMSE for regression).
+   - Ensure llm instruct this prompt code that limitate rarely library , which harly install 
+4. **Generate the Prompt**:
+   - Create a prompt for the instruct LLM to write a Python script named `run_pipeline.py`.
+   - The prompt must include:
+     - **Task Overview**: Briefly describe the task and goal based on the idea.
+     - **Data Loading**: Specify how to load the dataset from its path (e.g., using pandas) and any specific parameters.
+     - **Preprocessing Steps**: List all preprocessing steps in sequence.
+     - **Model Configuration**: Define the model and its hyperparameters.
+     - **Training Process**: Explain how to train the model, including data splits and validation.
+     - **Evaluation**: Instruct to compute multiple evaluation metrics (e.g., accuracy, precision, recall, loss) on the test set.
+     - **Save Results**: Direct the LLM to:
+       - Create a "result" folder if it does not exist (e.g., using `os.makedirs`).
+       - Save a JSON file (e.g., `results.json`) in the "result" folder containing:
+         - All evaluation metrics computed on the test set.
+         - Hyperparameters used in the model.
+       - Ensure the script is modular and adaptable.
+
+### Additional Requirements:
+- The prompt must be detailed, specific to the dataset and idea, and follow a common structure for training AI models.
+- Do not include notes or comments in the generated source code.
+- Ensure the script uses multiple evaluation benchmarks as appropriate for the task.
+- The final script must save results in a "result" folder in a structured format (e.g., JSON).
+
+"""

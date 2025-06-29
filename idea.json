@@ -1,5 +1,5 @@
 {
-  "task": "Train a simple classifier on dataset X",
+  "task": "Train a classifier to predict whether a sensor reading window indicates an anomaly",
   "goal": "Optimize validation accuracy",
-  "initial_constraints": "Use only sklearn, no deep learning"
+  "initial_constraints": "Use scikit-learn, or lSTM deep learning; preprocess data using time-windowing to capture temporal patterns"
 }
