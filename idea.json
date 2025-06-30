@@ -1,5 +1,9 @@
 {
-  "task": "Train a classifier to predict whether a sensor reading window indicates an anomaly",
-  "goal": "Optimize validation accuracy",
-  "initial_constraints": "Use scikit-learn, or lSTM deep learning; preprocess data using time-windowing to capture temporal patterns"
+  "Name": "sensor_anomaly_detection",
+  "Title": "Sensor Anomaly Detection Using Window-Based Classification",
+  "Experiment": "Train a classifier (e.g., Random Forest, Logistic Regression, or LSTM) on time-windowed sensor data to detect anomalies. The dataset is split into overlapping windows to preserve temporal patterns. The goal is to predict whether a window of sensor readings contains an anomaly using classical machine learning (e.g., scikit-learn) or deep learning (e.g., LSTM). Models are evaluated using validation accuracy, precision, recall, and F1-score.",
+  "Interestingness": 7,
+  "Feasibility": 8,
+  "Novelty": 5,
+  "novel": false
 }

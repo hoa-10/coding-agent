@@ -1,0 +1,22 @@
+{
+    "val_accuracy": 0.8976744186046511,
+    "val_precision": 0.9387755102040817,
+    "val_recall": 0.8518518518518519,
+    "val_f1": 0.8932038834951457,
+    "test_accuracy": 0.8697674418604651,
+    "test_precision": 0.8631578947368421,
+    "test_recall": 0.845360824742268,
+    "test_f1": 0.8541666666666666,
+    "pipeline_parameters": {
+        "window_size": 10,
+        "stride": 1,
+        "train_ratio": 0.7,
+        "val_ratio": 0.15,
+        "test_ratio": 0.15
+    },
+    "model_parameters": {
+        "model_name": "RandomForestClassifier",
+        "n_estimators": 100,
+        "random_state": 42
+    }
+}
