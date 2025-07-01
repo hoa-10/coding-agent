@@ -1,8 +1,11 @@
 import os 
+from base_code.coding_loop_enhance import generate_instruct_prompt
+from base_code.processing_data import auto_analyze_with_retry
 from dotenv import load_dotenv
 from datetime import datetime
 from perform_experiment import perform_experiments
 from aider.coders import Coder
+import pandas as pd
 from aider.io import InputOutput
 from aider.models import Model
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -29,7 +32,7 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
     vis_file = osp.join(folder_name, "plot.py")
     notes = osp.join(folder_name, "notes.txt")
     
-    # FIX: Thêm encoding='utf-8' khi ghi file
+
     with open(notes, "w", encoding='utf-8') as f:
         f.write(f"# Title: {idea['Title']}\n")
         f.write(f"# Experiment description: {idea['Experiment']}\n")
@@ -39,7 +42,6 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
 
     if log_file:
         log_path = osp.join(folder_name, "log.txt")
-        # FIX: Thêm encoding='utf-8' cho log file
         log = open(log_path, "a", encoding='utf-8')
         sys.stdout = log
         sys.stderr = log
@@ -49,10 +51,7 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
     fnames = [exp_file, vis_file, notes]
     io = InputOutput(yes=True, chat_history_file=f"{folder_name}/{idea_name}_aider.txt")
     
-    # Use OpenAI model with more specific configuration
     main_model = Model(model)
-    
-    # Kiểm tra xem experiment.py có tồn tại và có nội dung không
     exp_exists = os.path.exists(exp_file)
     exp_size = os.path.getsize(exp_file) if exp_exists else 0
     
@@ -64,14 +63,13 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
         stream=False,
         use_git=False,
         edit_format="diff",
-        auto_commits=False,  # Tắt auto commits để tránh conflicts
-        dirty_commits=True,  # Cho phép commits với dirty state
+        auto_commits=False, 
+        dirty_commits=True,  
     )
 
     print_time()
     print(f"*Starting Experiments*")
     
-    # In ra nội dung experiment.py ban đầu để debug
     try:
         with open(exp_file, 'r', encoding='utf-8') as f:
             initial_content = f.read()
@@ -93,19 +91,42 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
 
     return True
 
-
+##################################
+data = "sensor_data.csv"
+data_info = pd.read_csv(data)
 idea = json.load(open("idea.json", encoding="utf-8"))
-results_dir = r"C:\Users\Admin\Desktop\coding-agent"
+results_dir = "coding-agent"
 os.makedirs(results_dir, exist_ok=True)
-# Chạy experiment
-success = do_idea(
+
+# Step 1: Auto analyze with retry
+print("Step 1: Starting auto analysis...")
+auto_success = auto_analyze_with_retry()
+if not auto_success:
+    print("❌ Auto analysis failed. Stopping workflow.")
+    sys.exit(1)
+
+print("✅ Auto analysis completed successfully!")
+
+# Step 2: Generate instruct prompt
+print("Step 2: Generating instruct prompt...")
+prompt_success = generate_instruct_prompt(data, data_info, idea)
+if not prompt_success:
+    print("❌ Instruct prompt generation failed. Stopping workflow.")
+    sys.exit(1)
+
+print("✅ Instruct prompt generated successfully!")
+
+# Step 3: Execute the main experiment
+print("Step 3: Starting main experiment...")
+experiment_success = do_idea(
     base_dir="result",
     results_dir=results_dir, 
     idea=idea,
-    model="gemini/gemini-2.5-flash",  # hoặc "gpt-4", "gpt-3.5-turbo"
+    model="gemini/gemini-2.5-flash",  
     log_file=True
 )
-if success:
-    print("Experiment completed successfully!")
+
+if experiment_success:
+    print("✅ Complete workflow finished successfully!")
 else:
-    print("Experiment failed!")
+    print("❌ Experiment failed!")

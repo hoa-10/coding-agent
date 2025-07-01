@@ -40,5 +40,6 @@ Your task is to analyze the dataset information located at `{data_info_path}`and
 - Do not include notes or comments in the generated source code.
 - Ensure the script uses multiple evaluation benchmarks as appropriate for the task.
 - The final script must save results in a "result" folder in a structured format (e.g., JSON).
+- prompt must be ensure that llm won"t use the random data or random seed in the code, so that the results are reproducible.
 
 """

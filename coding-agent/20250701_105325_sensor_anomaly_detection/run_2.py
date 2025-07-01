@@ -3,28 +3,29 @@ import numpy as np
 import os
 import json
 import random
+import argparse
+import re
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # --- Configuration ---
 DATA_FILE = 'sensor_data.csv'
-RESULTS_DIR = 'result'
-RESULTS_FILE = os.path.join(RESULTS_DIR, 'results.json')
+# RESULTS_DIR and RESULTS_FILE will be set by command-line arguments
 
 # Sensor columns to use
 SENSOR_COLUMNS = ['sensor_1', 'sensor_2', 'sensor_3']
 
-# Anomaly Generation Parameters
+# Anomaly Generation Parameters (Base values)
 ANOMALY_PERCENTAGE_RANGE = (0.05, 0.10) # 5% to 10% of data points
-PERTURBATION_FACTOR_STD = (5, 10) # Multiplier for standard deviation for anomaly perturbation
+PERTURBATION_FACTOR_STD_BASE = (5, 10) # Multiplier for standard deviation for anomaly perturbation
 
-# Windowing Parameters
-WINDOW_SIZE = 60
-OVERLAP = 30
+# Windowing Parameters (Base values)
+WINDOW_SIZE_BASE = 60
+OVERLAP_BASE = 30
 
-# Model Parameters
-RANDOM_FOREST_HYPERPARAMETERS = {
+# Model Parameters (Base values)
+RANDOM_FOREST_HYPERPARAMETERS_BASE = {
     'n_estimators': 100,
     'random_state': 42
 }
@@ -33,6 +34,82 @@ RANDOM_FOREST_HYPERPARAMETERS = {
 TRAIN_RATIO = 0.8
 VALIDATION_RATIO = 0.1
 TEST_RATIO = 0.1 # This will be 1 - TRAIN_RATIO - VALIDATION_RATIO
+
+# Define experiment configurations
+# Each entry corresponds to a run (index 0 for run 1, index 1 for run 2, etc.)
+EXPERIMENT_CONFIGS = [
+    # Run 1: Vary window_size
+    {
+        'WINDOW_SIZE': 30,
+        'OVERLAP': 15, # Adjusted for new window size
+        'RANDOM_FOREST_HYPERPARAMETERS': RANDOM_FOREST_HYPERPARAMETERS_BASE,
+        'PERTURBATION_FACTOR_STD': PERTURBATION_FACTOR_STD_BASE,
+    },
+    # Run 2: Investigate Overlap (Increased Overlap with Baseline Window Size)
+    # Goal: Assess the impact of increased window overlap on performance.
+    # Parameters: WINDOW_SIZE=60 (baseline), OVERLAP=45 (increased from 30), others baseline.
+    {
+        'WINDOW_SIZE': WINDOW_SIZE_BASE,
+        'OVERLAP': 45,
+        'RANDOM_FOREST_HYPERPARAMETERS': RANDOM_FOREST_HYPERPARAMETERS_BASE,
+        'PERTURBATION_FACTOR_STD': PERTURBATION_FACTOR_STD_BASE,
+    },
+    # Run 3: Vary n_estimators
+    {
+        'WINDOW_SIZE': WINDOW_SIZE_BASE,
+        'OVERLAP': OVERLAP_BASE,
+        'RANDOM_FOREST_HYPERPARAMETERS': {'n_estimators': 200, 'random_state': 42},
+        'PERTURBATION_FACTOR_STD': PERTURBATION_FACTOR_STD_BASE,
+    },
+    # Run 4: Change anomaly_perturbation_factor_std
+    {
+        'WINDOW_SIZE': WINDOW_SIZE_BASE,
+        'OVERLAP': OVERLAP_BASE,
+        'RANDOM_FOREST_HYPERPARAMETERS': RANDOM_FOREST_HYPERPARAMETERS_BASE,
+        'PERTURBATION_FACTOR_STD': (10, 15),
+    },
+    # Run 5: (Placeholder for future combination or new idea)
+    {
+        'WINDOW_SIZE': WINDOW_SIZE_BASE,
+        'OVERLAP': OVERLAP_BASE,
+        'RANDOM_FOREST_HYPERPARAMETERS': RANDOM_FOREST_HYPERPARAMETERS_BASE,
+        'PERTURBATION_FACTOR_STD': PERTURBATION_FACTOR_STD_BASE,
+    }
+]
+
+# --- Argument Parsing ---
+parser = argparse.ArgumentParser(description="Run sensor anomaly detection experiment.")
+parser.add_argument('--out_dir', type=str, required=True,
+                    help="Output directory for results (e.g., 'run_1').")
+args = parser.parse_args()
+
+# Extract run number from out_dir
+match = re.match(r'run_(\d+)', args.out_dir)
+if not match:
+    raise ValueError(f"Invalid --out_dir format: {args.out_dir}. Expected 'run_X'.")
+run_number = int(match.group(1))
+
+# Set results directory and file
+RESULTS_DIR = args.out_dir
+RESULTS_FILE = os.path.join(RESULTS_DIR, 'final_info.json')
+
+# Apply current run's configuration
+if run_number <= 0 or run_number > len(EXPERIMENT_CONFIGS):
+    raise ValueError(f"Run number {run_number} is out of bounds. Max runs: {len(EXPERIMENT_CONFIGS)}")
+
+current_config = EXPERIMENT_CONFIGS[run_number - 1] # Adjust for 0-based indexing
+
+# Overwrite global parameters with current run's configuration
+WINDOW_SIZE = current_config['WINDOW_SIZE']
+OVERLAP = current_config['OVERLAP']
+RANDOM_FOREST_HYPERPARAMETERS = current_config['RANDOM_FOREST_HYPERPARAMETERS']
+PERTURBATION_FACTOR_STD = current_config['PERTURBATION_FACTOR_STD']
+
+print(f"Running experiment for Run {run_number} with configuration:")
+print(f"  WINDOW_SIZE: {WINDOW_SIZE}")
+print(f"  OVERLAP: {OVERLAP}")
+print(f"  RANDOM_FOREST_HYPERPARAMETERS: {RANDOM_FOREST_HYPERPARAMETERS}")
+print(f"  PERTURBATION_FACTOR_STD: {PERTURBATION_FACTOR_STD}")
 
 # --- Dummy Data Generation (for script usability) ---
 if not os.path.exists(DATA_FILE):

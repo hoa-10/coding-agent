@@ -11,7 +11,7 @@
     },
     "pipeline_parameters": {
         "window_size": 60,
-        "overlap": 30,
+        "overlap": 45,
         "anomaly_perturbation_factor_std": [
             5,
             10

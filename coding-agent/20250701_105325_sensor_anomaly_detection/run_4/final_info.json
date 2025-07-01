@@ -13,8 +13,8 @@
         "window_size": 60,
         "overlap": 30,
         "anomaly_perturbation_factor_std": [
-            5,
-            10
+            10,
+            15
         ],
         "data_split_ratios": {
             "train": 0.8,
