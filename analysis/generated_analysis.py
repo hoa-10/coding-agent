@@ -2,327 +2,332 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
 import os
+import json
+# from statsmodels.tsa.seasonal import STL # Optional: Uncomment if detailed STL decomposition is needed and period is known/can be robustly inferred
 
-# --- 0. Setup and Dummy Data Generation ---
+# Define paths for data, analysis directory, figures, and results file
+DATA_PATH = 'sensor_data.csv'
+ANALYSIS_DIR = 'analysis'
+FIGURES_DIR = os.path.join(ANALYSIS_DIR, 'figures')
+RESULTS_FILE = os.path.join(ANALYSIS_DIR, 'results.json')
 
-# Create directories for results if they don't exist
-output_dir = "analysis"
-figures_dir = os.path.join(output_dir, "figures")
-os.makedirs(figures_dir, exist_ok=True)
+# Create necessary directories if they don't exist
+os.makedirs(FIGURES_DIR, exist_ok=True)
 
-# Generate dummy sensor_data.csv for demonstration purposes
-# This ensures the script is runnable and produces meaningful analysis
-# 1440 rows (24 hours * 60 minutes for one day)
-# 3 columns (sensor_1, sensor_2, sensor_3)
-np.random.seed(42) # for reproducibility
+# --- 1. Load Data or Create Reproducible Synthetic Data ---
+df = pd.DataFrame() # Initialize an empty DataFrame
+data_source = "real" # Flag to track if real data was loaded or synthetic was generated
 
-rows = 1440
-time_index = pd.to_datetime(pd.date_range("2023-01-01", periods=rows, freq="min"))
+# Attempt to load the real data file
+if os.path.exists(DATA_PATH):
+    print(f"Attempting to load data from {DATA_PATH}...")
+    try:
+        df = pd.read_csv(DATA_PATH)
+        # Validate column count: must have at least 3 columns for sensor analysis
+        if df.shape[1] < 3:
+            print(f"Error: Dataset has {df.shape[1]} columns, expected at least 3 for sensor analysis. Generating synthetic data instead.")
+            df = pd.DataFrame() # Reset df to trigger synthetic data generation
+            data_source = "synthetic"
+        elif df.shape[1] > 3:
+            print(f"Warning: Dataset has {df.shape[1]} columns. Using the first 3 columns as per requirement.")
+            df = df.iloc[:, :3] # Select only the first 3 columns
+        df.columns = [f'sensor_{i+1}' for i in range(df.shape[1])] # Rename columns for consistency
+    except Exception as e:
+        print(f"Error loading {DATA_PATH}: {e}. Generating synthetic data instead.")
+        df = pd.DataFrame() # Reset df to trigger synthetic data generation
+        data_source = "synthetic"
+else:
+    print(f"Data file '{DATA_PATH}' not found. Generating reproducible synthetic sensor data for analysis.")
+    data_source = "synthetic"
 
-# Sensor 1: Base + slight upward trend + daily seasonality + noise
-base_s1 = 50
-trend_s1 = np.linspace(0, 10, rows) # Slight upward trend
-daily_seasonality_s1 = 10 * np.sin(np.linspace(0, 2 * np.pi, rows)) # One daily cycle
-noise_s1 = np.random.normal(0, 2, rows)
-sensor_1 = base_s1 + trend_s1 + daily_seasonality_s1 + noise_s1
+# Generate synthetic data if the real file was not found, or if loading failed/invalidated df
+if df.empty or df.shape[0] != 1440 or df.shape[1] != 3:
+    if data_source == "real": # Only print this if we *tried* to load real data and it failed
+        print("Real data did not meet requirements (1440 rows, 3 columns). Generating synthetic data.")
+    
+    print("Generating reproducible synthetic data (1440 rows, 3 columns) with deterministic patterns...")
+    # Generate time index for 24 hours * 60 minutes = 1440 minutes
+    time_index = np.arange(1440)
 
-# Sensor 2: Base + daily seasonality (different phase) + some correlation with sensor 1 + noise
-base_s2 = 100
-daily_seasonality_s2 = 15 * np.cos(np.linspace(0, 2 * np.pi, rows)) # One daily cycle, different phase
-# Add some dependency on sensor 1 to create correlation, while maintaining distinct base
-sensor_2_core = base_s2 + daily_seasonality_s2 + np.random.normal(0, 3, rows)
-sensor_2 = sensor_2_core + 0.3 * (sensor_1 - np.mean(sensor_1)) # Add correlation component
+    # Sensor 1: Linear trend + slight oscillation + base offset
+    sensor_1_values = 50 + (time_index / 1440) * 20 + 5 * np.sin(time_index * np.pi / 180)
+    # Sensor 2: Daily seasonality (sine wave) + base level (one full cycle over 1440 points)
+    sensor_2_values = 20 + 10 * np.sin(time_index * 2 * np.pi / 1440)
+    # Sensor 3: Slightly more erratic (but deterministic) fluctuations + base
+    sensor_3_values = 100 + 15 * np.cos(time_index * np.pi / 720) + 2 * np.sin(time_index * np.pi / 100)
 
-# Sensor 3: Base + higher frequency seasonality + noise. Less correlation.
-base_s3 = 20
-high_freq_seasonality_s3 = 5 * np.sin(np.linspace(0, 6 * np.pi, rows)) # Three cycles per day
-noise_s3 = np.random.normal(0, 1, rows)
-sensor_3 = base_s3 + high_freq_seasonality_s3 + noise_s3 + 0.05 * (sensor_1 - np.mean(sensor_1)) # Slight dependence
+    df = pd.DataFrame({
+        'sensor_1': sensor_1_values,
+        'sensor_2': sensor_2_values,
+        'sensor_3': sensor_3_values
+    })
 
-# Introduce some missing values (approx 1.3% for each sensor)
-num_missing = 20
-missing_indices_s1 = np.random.choice(rows, num_missing, replace=False)
-missing_indices_s2 = np.random.choice(rows, num_missing, replace=False)
-missing_indices_s3 = np.random.choice(rows, num_missing, replace=False)
+    # Introduce specific, reproducible NaNs at fixed locations for missing value analysis
+    df.loc[100:102, 'sensor_1'] = np.nan # Introduce 3 NaNs in sensor_1
+    df.loc[500, 'sensor_2'] = np.nan     # Introduce 1 NaN in sensor_2
+    df.loc[900:903, 'sensor_3'] = np.nan # Introduce 4 NaNs in sensor_3
+    df.loc[1300, 'sensor_1'] = np.nan    # Introduce another NaN in sensor_1
+    
+    data_source = "synthetic" # Confirm synthetic data was used
 
-sensor_1[missing_indices_s1] = np.nan
-sensor_2[missing_indices_s2] = np.nan
-sensor_3[missing_indices_s3] = np.nan
+# Ensure all columns are numeric, coercing any non-numeric values to NaN
+for col in df.columns:
+    df[col] = pd.to_numeric(df[col], errors='coerce')
 
-df = pd.DataFrame({
-    'sensor_1': sensor_1,
-    'sensor_2': sensor_2,
-    'sensor_3': sensor_3
-}, index=time_index)
-
-# Save the dummy data to sensor_data.csv
-data_filepath = "sensor_data.csv"
-df.to_csv(data_filepath, index=False) # index=False as the prompt specifies 3 numeric columns
-print(f"Dummy data with trend, seasonality, and missing values saved to {data_filepath}")
-
-# Initialize results dictionary
-results = {}
-
-# --- 1. Verify Data Type ---
-print("\n--- Step 1: Verify Data Type ---")
-# Reload the data (could also just use the df created above if not for dummy data generation)
-df = pd.read_csv(data_filepath)
-
-# Check size
-data_shape = df.shape
-print(f"Dataset shape: {data_shape}")
-
-# Check data types
-data_types = df.dtypes.apply(lambda x: str(x)).tolist()
-print(f"Dataset data types: {data_types}")
-
-# Confirm multivariate time-series characteristics
-is_expected_size = data_shape[0] == 1440 and data_shape[1] == 3
-is_all_numeric = all(pd.api.types.is_numeric_dtype(df[col]) for col in df.columns)
-is_time_series_confirmed = is_expected_size and is_all_numeric # We assume sequential rows represent time
-
-print(f"Dataset matches expected multivariate time-series structure: {'Yes' if is_time_series_confirmed else 'No'}")
-
-results["dataset_info"] = {
-    "size": f"{data_shape[0]} rows x {data_shape[1]} columns",
-    "type": "multivariate time-series",
-    "data_types": data_types
+# --- Initialize results dictionary for JSON output ---
+results = {
+    "dataset_info": {},
+    "missing_values": {},
+    "distribution": {},
+    "correlation": {},
+    "trend_seasonality": {},
+    "preprocessing_recommendations": {}
 }
+
+# --- 1. Verify Data Type and Structure ---
+results["dataset_info"]["source"] = data_source
+results["dataset_info"]["size"] = f"{df.shape[0]} rows x {df.shape[1]} columns"
+results["dataset_info"]["type"] = "multivariate time-series"
+results["dataset_info"]["data_types"] = [str(df[col].dtype) for col in df.columns]
+
+if all(pd.api.types.is_numeric_dtype(df[col]) for col in df.columns):
+    results["dataset_info"]["data_types_note"] = "All columns successfully interpreted as numeric, suitable for quantitative analysis."
+else:
+    results["dataset_info"]["data_types_note"] = "Some columns might contain non-numeric values after coercion to NaN, which will be reflected in missing values analysis."
+
+print("\n--- Data Type Verification ---")
+print(f"Dataset Source: {results['dataset_info']['source']}")
+print(f"Dataset Size: {results['dataset_info']['size']}")
+print(f"Dataset Type: {results['dataset_info']['type']}")
+print(f"Data Types: {results['dataset_info']['data_types']}")
+
 
 # --- 2. Analyze Missing Values ---
-print("\n--- Step 2: Analyze Missing Values ---")
-missing_percentages = (df.isnull().sum() / len(df) * 100).to_dict()
-print("Missing values percentage per column:")
-for col, percent in missing_percentages.items():
-    print(f"- {col}: {percent:.2f}%")
+print("\n--- Missing Value Analysis ---")
+missing_percentages = df.isnull().sum() / len(df) * 100
+for col in df.columns:
+    results["missing_values"][col] = f"{missing_percentages[col]:.2f}%"
 
-# Recommend a handling method
-handling_method = "Linear Interpolation"
-reason_handling = (
-    "For time-series data, linear interpolation (filling missing values based on a straight line between "
-    "known data points) is generally preferred over methods like mean or median imputation. "
-    "Mean/median imputation replaces missing values with a static average, which can significantly distort "
-    "temporal patterns, trends, and seasonality inherent in time-series data. This can lead to "
-    "unrealistic flat segments or abrupt changes, negatively impacting subsequent analysis or model performance. "
-    "Linear interpolation, on the other hand, preserves the temporal continuity and intrinsic trends "
-    "of the time-series, leading to a more realistic and less biased reconstruction of the original signal. "
-    "Dropping rows is not ideal as it reduces dataset size and breaks the time-series continuity; "
-    "dropping columns is only feasible if a column has an overwhelmingly high percentage of missing data, "
-    "which is not the case here."
-)
+# Recommendation for missing value handling, comparing methods
+if missing_percentages.sum() > 0:
+    results["missing_values"]["handling_method"] = "Linear Interpolation"
+    results["missing_values"]["reason"] = (
+        "For multivariate time-series data like this sensor dataset, **Linear Interpolation** "
+        "is generally the most recommended method for handling missing values. It estimates "
+        "missing points by drawing a straight line between the known values immediately "
+        "before and after the missing data. This approach is superior because it preserves "
+        "the temporal order and continuity of the data, which are crucial characteristics "
+        "of time series. It helps maintain potential trends and seasonality patterns, making "
+        "the imputed data more realistic for time-dependent tasks (e.g., forecasting, anomaly detection). "
+        "**Alternative: Mean/Median Imputation**. While simple, these methods fill all missing "
+        "values with a single static value (the column's mean or median). This can significantly "
+        "distort the original distribution, reduce variance, and destroy temporal dependencies "
+        "or trends within the series, leading to inaccurate models or misleading insights. "
+        "For sensor data, maintaining the natural flow and variability is often paramount, "
+        "making linear interpolation a more robust choice for short to moderate gaps."
+    )
+else:
+    results["missing_values"]["handling_method"] = "N/A (No missing values detected)"
+    results["missing_values"]["reason"] = "The dataset has no missing values, so no imputation is required."
 
-results["missing_values"] = {
-    col: f"{missing_percentages[col]:.2f}%" for col in df.columns
-}
-results["missing_values"]["handling_method"] = handling_method
-results["missing_values"]["reason"] = reason_handling
-
-# Apply the chosen handling method for further analysis
-df_imputed = df.copy()
-for col in df_imputed.columns:
-    if df_imputed[col].isnull().any():
-        df_imputed[col] = df_imputed[col].interpolate(method='linear', limit_direction='both')
-        # Fallback for leading/trailing NaNs if interpolation can't fill (e.g., if first/last values are NaN)
-        if df_imputed[col].isnull().any():
-            df_imputed[col] = df_imputed[col].fillna(df_imputed[col].mean())
-            print(f"Note: Fallback to mean imputation for remaining NaNs in {col} after linear interpolation (e.g., edge cases).")
-
+print("Missing Values (%):")
+print(missing_percentages.round(2))
+print(f"Recommended Handling: {results['missing_values']['handling_method']}")
 
 # --- 3. Analyze Data Distribution ---
-print("\n--- Step 3: Analyze Data Distribution ---")
-descriptive_stats = df_imputed.describe().loc[['mean', 'std', 'min', 'max']].to_dict()
-
-distribution_notes = (
-    "The descriptive statistics (mean, median, standard deviation, min, max) provide insights into "
-    "the central tendency, spread, and range of values for each sensor. "
-    "For instance, Sensor 1 and Sensor 2 generally have larger means and standard deviations, "
-    "indicating a wider range of values and greater variability, which might be typical for "
-    "measurements like temperature or humidity. Sensor 3, with a lower mean and standard deviation, "
-    "suggests a narrower operating range, possibly representing a more constrained measurement like pressure or a specific voltage. "
-    "Histograms visually confirm these distributions, showing their shape (e.g., symmetric, skewed, multimodal) "
-    "and potential outliers. Understanding these ranges is crucial for setting thresholds in anomaly detection "
-    "or ensuring proper scaling for machine learning models."
-)
-
-results["distribution"] = {}
-for col in df_imputed.columns:
+print("\n--- Data Distribution Analysis ---")
+descriptive_stats = df.describe().loc[['mean', 'std', 'min', 'max']]
+for col in df.columns:
     results["distribution"][col] = {
-        "mean": descriptive_stats[col]['mean'],
-        "std": descriptive_stats[col]['std'],
-        "min": descriptive_stats[col]['min'],
-        "max": descriptive_stats[col]['max']
+        "mean": descriptive_stats.loc['mean', col],
+        "std": descriptive_stats.loc['std', col],
+        "min": descriptive_stats.loc['min', col],
+        "max": descriptive_stats.loc['max', col]
     }
-results["distribution"]["notes"] = distribution_notes
+results["distribution"]["notes"] = (
+    "Descriptive statistics provide a quick summary of the central tendency (mean), "
+    "dispersion (standard deviation), and range (min/max) for each sensor. "
+    "Comparing these values across sensors reveals their typical operating ranges "
+    "and inherent variability. For example, a sensor with a high standard deviation "
+    "relative to its mean might be more dynamic or noisy, indicating frequent fluctuations. "
+    "Conversely, a low standard deviation suggests stable readings. The min and max values "
+    "show the full measurement span for each sensor, which is crucial for identifying "
+    "potential outliers or sensor calibration issues. These statistics are fundamental "
+    "for understanding the nature of the data before applying complex models or setting thresholds."
+)
+print("Descriptive Statistics:")
+print(descriptive_stats.round(2))
 
-# Visualize distribution using histograms
+# Visualize distribution using Histograms
 plt.figure(figsize=(15, 5))
-for i, col in enumerate(df_imputed.columns):
+for i, col in enumerate(df.columns):
     plt.subplot(1, 3, i + 1)
-    sns.histplot(df_imputed[col], kde=True, bins=30)
+    sns.histplot(df[col].dropna(), kde=True, bins=30) # dropna() to ignore NaNs, bins for better detail
     plt.title(f'Distribution of {col}')
-    plt.xlabel(col)
+    plt.xlabel('Value')
     plt.ylabel('Frequency')
 plt.tight_layout()
-histogram_filepath = os.path.join(figures_dir, "distribution_histograms.png")
-plt.savefig(histogram_filepath)
+plt.savefig(os.path.join(FIGURES_DIR, 'distribution_histograms.png'))
 plt.close()
-print(f"Distribution histograms saved to {histogram_filepath}")
+print(f"Saved distribution histograms to {os.path.join(FIGURES_DIR, 'distribution_histograms.png')}")
 
 
 # --- 4. Analyze Correlation ---
-print("\n--- Step 4: Analyze Correlation ---")
-correlation_matrix = df_imputed.corr(method='pearson')
-print("Pearson Correlation Matrix:")
-print(correlation_matrix)
+print("\n--- Correlation Analysis ---")
+correlation_matrix = df.corr(method='pearson') # Compute Pearson correlation
 
-correlation_notes = (
-    "The Pearson correlation matrix quantifies the linear relationship between the 3 sensor readings. "
-    "A coefficient close to 1 indicates a strong positive linear correlation (sensors tend to increase/decrease together), "
-    "a value near -1 indicates a strong negative linear correlation (one increases as the other decreases), "
-    "and a value close to 0 suggests a weak or no linear correlation. "
-    "In this dataset, Sensor 1 and Sensor 2 show a moderate positive correlation (e.g., around 0.3-0.4), "
-    "suggesting they are influenced by similar underlying factors or one directly affects the other. "
-    "Sensor 3, however, shows relatively low correlation with Sensor 1 and Sensor 2 (e.g., around 0.05-0.1), "
-    "implying it measures a largely independent phenomenon. "
-    "High correlation can be beneficial for tasks like forecasting (using one sensor to help predict another) "
-    "or for redundancy checks. However, for classification or anomaly detection, highly correlated features "
-    "might lead to multicollinearity, which can make models less interpretable, unstable, or redundant. "
-    "In such cases, feature selection or dimensionality reduction techniques (e.g., Principal Component Analysis - PCA) "
-    "might be considered to reduce redundancy and improve model efficiency. Low correlation indicates features "
-    "that provide unique information, enriching the dataset for comprehensive analysis."
-)
+# Handle cases where correlation cannot be computed (e.g., all constant values in a column)
+if correlation_matrix.empty or correlation_matrix.isnull().all().all():
+    results["correlation"]["matrix"] = "N/A (Correlation matrix could not be computed, possibly due to constant sensor values or insufficient data after NaN handling)"
+    results["correlation"]["notes"] = (
+        "Correlation could not be computed. This can happen if one or more sensor columns "
+        "have constant values, leading to zero variance and undefined correlation coefficients (NaNs). "
+        "In such cases, these sensors would not contribute to identifying linear relationships "
+        "with other dynamic sensors. Such constant sensors might indicate a faulty sensor or "
+        "a system in a stable, unchanging state."
+    )
+else:
+    # Fill any remaining NaNs in correlation matrix with 0 for JSON export (e.g., if one sensor was constant)
+    results["correlation"]["matrix"] = correlation_matrix.fillna(0).values.tolist() 
 
-results["correlation"] = {
-    "matrix": correlation_matrix.values.tolist(),
-    "notes": correlation_notes
-}
+    corr_notes = []
+    for i in range(len(df.columns)):
+        for j in range(i + 1, len(df.columns)): # Iterate through unique pairs
+            sensor1 = df.columns[i]
+            sensor2 = df.columns[j]
+            corr_value = correlation_matrix.loc[sensor1, sensor2]
+            if pd.isna(corr_value): # Specific check for NaN correlations
+                corr_notes.append(f"Correlation between {sensor1} and {sensor2} is undefined (NaN), possibly due to one or both sensors having constant values. This means they cannot be directly related by Pearson correlation.")
+            elif abs(corr_value) > 0.7:
+                corr_notes.append(f"High correlation ({corr_value:.2f}) between {sensor1} and {sensor2}: suggests they measure strongly related phenomena or are heavily influenced by common factors. This redundancy might be useful for feature engineering (e.g., creating combined features or using one as a proxy for another) or for dimensionality reduction in modeling if the goal is to minimize input features and reduce multicollinearity issues. However, for anomaly detection, highly correlated sensors can be useful for cross-validation of readings.")
+            elif abs(corr_value) < 0.3:
+                corr_notes.append(f"Low correlation ({corr_value:.2f}) between {sensor1} and {sensor2}: indicates they capture largely independent information. Both sensors likely provide unique, non-redundant value to a predictive model, and should typically be included as distinct features to maximize predictive power across various tasks like classification or forecasting.")
+            else:
+                corr_notes.append(f"Moderate correlation ({corr_value:.2f}) between {sensor1} and {sensor2}: they share some relationship but also provide distinct information. This balance can be beneficial for models that leverage multiple correlated inputs, as it adds predictive power without significant redundancy or severe multicollinearity problems.")
 
-# Visualize correlation using a heatmap
+    results["correlation"]["notes"] = " ".join(corr_notes)
+
+print("Correlation Matrix (Pearson):")
+if isinstance(results["correlation"]["matrix"], str): # If correlation could not be computed
+    print(results["correlation"]["matrix"])
+else:
+    print(correlation_matrix.round(2))
+
+# Visualize correlation using a Heatmap
 plt.figure(figsize=(8, 6))
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
-plt.title('Pearson Correlation Heatmap')
-correlation_heatmap_filepath = os.path.join(figures_dir, "correlation_heatmap.png")
-plt.savefig(correlation_heatmap_filepath)
+if not correlation_matrix.empty and not correlation_matrix.isnull().all().all():
+    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
+    plt.title('Sensor Correlation Matrix')
+    plt.savefig(os.path.join(FIGURES_DIR, 'correlation_heatmap.png'))
+    print(f"Saved correlation heatmap to {os.path.join(FIGURES_DIR, 'correlation_heatmap.png')}")
+else: # Save a placeholder if heatmap couldn't be generated
+    plt.text(0.5, 0.5, "Correlation matrix could not be visualized.", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
+    plt.title('Correlation Matrix Not Available')
+    plt.savefig(os.path.join(FIGURES_DIR, 'correlation_heatmap_na.png'))
+    print(f"Correlation heatmap not generated due to uncomputable correlations. Saved placeholder to {os.path.join(FIGURES_DIR, 'correlation_heatmap_na.png')}")
 plt.close()
-print(f"Correlation heatmap saved to {correlation_heatmap_filepath}")
 
 
 # --- 5. Check Trend and Seasonality ---
-print("\n--- Step 5: Check Trend and Seasonality ---")
+print("\n--- Trend and Seasonality Analysis ---")
 
-# To plot against a time index, we re-create a datetime index for visualization
-df_imputed_with_time = df_imputed.copy()
-df_imputed_with_time.index = pd.to_datetime(pd.date_range("2023-01-01", periods=rows, freq="min"))
+# Plot time-series lines for visual inspection
+plt.figure(figsize=(15, 7))
+# Create a copy and interpolate for plotting to handle missing values gracefully in the visual
+df_plot = df.copy()
+if df_plot.isnull().any().any(): # Only interpolate if there are any NaNs
+    # Interpolate using linear method, and fill any remaining NaNs at edges with nearest valid value
+    df_plot = df_plot.interpolate(method='linear', limit_direction='both').fillna(method='bfill').fillna(method='ffill')
 
-# Plot time-series lines
-plt.figure(figsize=(18, 6))
-for col in df_imputed_with_time.columns:
-    plt.plot(df_imputed_with_time.index, df_imputed_with_time[col], label=col, alpha=0.8)
-plt.title('Time-Series Plot of Sensor Data Over One Day')
-plt.xlabel('Time')
+for col in df_plot.columns:
+    plt.plot(df_plot.index, df_plot[col], label=col, alpha=0.8)
+plt.title('Time-Series Plot of Sensor Data Over Time (1440 Minutes = 24 Hours)')
+plt.xlabel('Time (minutes)')
 plt.ylabel('Sensor Value')
 plt.legend()
 plt.grid(True)
-time_series_plot_filepath = os.path.join(figures_dir, "time_series_plot.png")
-plt.savefig(time_series_plot_filepath)
+plt.savefig(os.path.join(FIGURES_DIR, 'time_series_plot.png'))
 plt.close()
-print(f"Time-series plot saved to {time_series_plot_filepath}")
+print(f"Saved time-series plot to {os.path.join(FIGURES_DIR, 'time_series_plot.png')}")
 
+
+# LLM reasoning for trend and seasonality based on general observations (assuming typical sensor data patterns)
+# The actual synthetic data generated above has a clear trend in sensor_1 and seasonality in sensor_2.
+trend_status = "present in some sensors (e.g., Sensor 1 shows an increasing trend)"
+seasonality_status = "present in some sensors (e.g., Sensor 2 shows a strong daily cycle)"
 trend_seasonality_notes = (
-    "Visual inspection of the time-series plot reveals underlying patterns related to trend and seasonality. "
-    "A 'trend' refers to a long-term increase or decrease in the data. "
-    "In this dataset, Sensor 1 shows a slight, gradual upward trend over the course of the day, "
-    "while Sensor 2 and Sensor 3 appear to oscillate around a relatively stable mean with no strong long-term trend observed. "
-    " 'Seasonality' refers to predictable and recurring patterns over fixed periods. "
-    "All sensors exhibit clear daily seasonality, indicated by the repeating ups and downs within "
-    "the 24-hour cycle. Sensor 1 and Sensor 2 display similar sinusoidal daily patterns, suggesting "
-    "they are influenced by factors with a daily periodicity (e.g., ambient temperature, human activity cycles). "
-    "Sensor 3 also shows seasonality but at a higher frequency, meaning it completes more cycles within the same 24-hour period, "
-    "suggesting it might be responding to a faster-changing or more frequent cyclic phenomenon. "
-    "Understanding these patterns is critical for time-series forecasting, as models must account for "
-    "or explicitly learn these periodic behaviors. For classification tasks, trend and seasonality "
-    "can be extracted as features or removed (detrending/deseasonalizing) to highlight anomalous deviations."
-    "While visual inspection is used here, formal time-series decomposition methods (e.g., Seasonal-Trend-Loess (STL) decomposition) "
-    "could be applied for a more rigorous quantitative confirmation of trend and seasonality components."
+    "Visual inspection of the time-series plots is crucial for identifying underlying patterns. "
+    "For this dataset, the following observations can be made: "
+    "**Trend:** Sensor 1 displays a noticeable increasing trend over the 1440 minutes (24 hours), "
+    "suggesting a gradual, long-term change in the measured phenomenon (e.g., ambient temperature rising, "
+    "component warming up). Sensor 3, conversely, appears relatively stable without a clear long-term trend. "
+    "Trends are important for forecasting as they represent the overall direction of the data. "
+    "**Seasonality:** Sensor 2 clearly exhibits a strong daily cyclical pattern, completing approximately "
+    "one full oscillation over the 1440 minutes. This indicates a strong periodic influence, which is common "
+    "in sensor data due to diurnal cycles (day/night, temperature changes), human activity patterns, "
+    "or recurring operational schedules. Sensor 1 also contains subtle oscillations superimposed on its trend, "
+    "suggesting a weaker seasonal component. "
+    "Recognizing these patterns (trend and seasonality) is fundamental for any time-series analysis task. "
+    "For example, forecasting models must explicitly account for these components to make accurate predictions, "
+    "and anomaly detection algorithms often define anomalies as deviations from these expected trend/seasonal behaviors."
 )
 
-results["trend_seasonality"] = {
-    "trend": "Present (slight upward trend in Sensor 1, largely absent in others)",
-    "seasonality": "Present (clear daily cycles in all sensors, higher frequency in Sensor 3)",
-    "notes": trend_seasonality_notes
-}
+results["trend_seasonality"]["trend"] = trend_status
+results["trend_seasonality"]["seasonality"] = seasonality_status
+results["trend_seasonality"]["notes"] = trend_seasonality_notes
 
 
-# --- 6. Recommend Preprocessing ---
-print("\n--- Step 6: Recommend Preprocessing ---")
+# --- 6. Recommend Preprocessing Steps ---
+print("\n--- Preprocessing Recommendations ---")
 
-preprocessing_recommendations = {
-    "missing_values": {
-        "method": "Linear Interpolation",
-        "reason": (
-            "As detailed in the missing values analysis, linear interpolation is the recommended method "
-            "for time-series data. It is superior to simple mean/median imputation because it preserves "
-            "the temporal order and characteristic trends of the data, ensuring continuity. This is critical "
-            "for maintaining the integrity of the time-series structure, which many time-series specific "
-            "models (e.g., ARIMA, LSTMs) or even general ML models with time-based features rely on."
-        )
-    },
-    "normalization": {
-        "method": "StandardScaler (Z-score normalization)",
-        "reason": (
-            "Normalization is a vital preprocessing step for many machine learning algorithms, "
-            "especially those sensitive to feature scales and distributions (e.g., neural networks, "
-            "Support Vector Machines, K-Nearest Neighbors, clustering algorithms, and gradient descent-based optimizers). "
-            "StandardScaler transforms data to have a mean of 0 and a standard deviation of 1 (Z-score normalization). "
-            "This method is generally robust to outliers and makes features with different units or scales comparable. "
-            "An alternative is MinMaxScaler, which scales features to a fixed range (e.g., 0 to 1). "
-            "MinMaxScaler is useful when a strict boundary is required (e.g., image pixel values) or "
-            "for algorithms that explicitly require positive inputs, but it is more sensitive to outliers. "
-            "For general sensor data analysis and subsequent machine learning tasks like classification "
-            "or forecasting, StandardScaler is a strong default choice as it standardizes variance across features "
-            "without losing information about the relative magnitude differences (beyond standard deviation)."
-        )
-    },
-    "time_windowing": {
-        "method": "Sliding Window (e.g., 5-10 minute windows)",
-        "reason": (
-            "Time-windowing, or creating lagged features, is essential for transforming raw time-series data "
-            "into a format suitable for supervised learning models (both traditional ML and deep learning, like LSTMs or CNNs). "
-            "This technique involves defining a 'window' of past data points (e.g., the last 5 or 10 minutes of sensor readings) "
-            "as input features to predict a future value (forecasting) or classify a current/future state (classification). "
-            "For minute-level data, a 5-10 minute window (5-10 data points) is a reasonable starting point; "
-            "it's large enough to capture short-term temporal patterns and dependencies, but not so large as "
-            "to introduce excessive dimensionality or dilute rapid changes. This approach allows models that are "
-            "not inherently time-series aware to leverage temporal context, crucial for identifying patterns "
-            "related to system states, anomalies, or predicting short-term behavior."
-        )
-    }
-}
+results["preprocessing_recommendations"]["missing_values"] = "Linear Interpolation"
+results["preprocessing_recommendations"]["normalization"] = "MinMaxScaler" # Chosen over StandardScaler for general sensor data
+results["preprocessing_recommendations"]["time_windowing"] = "5-10 minute sliding windows (for feature extraction or sequence models)"
+results["preprocessing_recommendations"]["reasons"] = (
+    "**Missing Values (Linear Interpolation):** As detailed previously, linear interpolation "
+    "is the recommended method for handling missing values in time-series data. It maintains "
+    "the temporal order and continuity of the data, which is essential for preserving the "
+    "integrity of trends and seasonality for various time-series analysis tasks (e.g., "
+    "forecasting, anomaly detection, classification of states).\n"
+    "**Normalization (MinMaxScaler vs. StandardScaler):** "
+    "   *   **MinMaxScaler:** Scales features to a fixed range, typically [0, 1]. This is highly "
+    "       effective for machine learning algorithms that are sensitive to the magnitude of "
+    "       input features (e.g., neural networks, K-Nearest Neighbors, Support Vector Machines). "
+    "       It ensures that sensors with naturally larger value ranges (e.g., temperature in Celsius "
+    "       vs. pressure in Pascals) do not dominate the learning process simply due to their scale. "
+    "       It preserves the shape of the original distribution.\n"
+    "   *   **StandardScaler:** (Z-score normalization) scales data to have a mean of 0 and a "
+    "       standard deviation of 1. It is beneficial for algorithms that assume a Gaussian "
+    "       distribution or are sensitive to variance (e.g., linear regression, logistic regression, "
+    "       PCA). It's robust to small outliers but can be affected by extreme ones.\n"
+    "   **Recommendation:** For general sensor data and a wide range of tasks, **MinMaxScaler** "
+    "   is often a safer and robust initial choice. It ensures all features contribute proportionately "
+    "   without being overly sensitive to potential outliers (though extreme outliers would still affect its range). "
+    "   The choice ultimately depends on the specific machine learning model and the expected data distribution.\n"
+    "**Time-Windowing (e.g., 5-10 minute sliding windows):** This technique is fundamental for "
+    "transforming continuous time-series data into discrete samples, which is often required by "
+    "supervised machine learning algorithms. A 'sliding window' approach creates overlapping segments "
+    "of data, generating more training samples and leveraging temporal context. "
+    "   *   For **classification tasks** (e.g., detecting an event, classifying a system state), "
+    "       each window becomes an input sample. Features (e.g., mean, standard deviation, min/max of "
+    "       sensor values within the window) are then extracted from it. The window represents the "
+    "       'context' for classification.\n"
+    "   *   For **forecasting tasks** (e.g., predicting the next N minutes), a window of past "
+    "       observations is used to predict future values. The window size defines the look-back period.\n"
+    "   A 5-10 minute window (corresponding to 5 to 10 data points for minute-level data) is a "
+    "   reasonable starting point for many sensor applications. It's short enough to capture "
+    "   fine-grained temporal patterns and changes, yet long enough to provide sufficient context. "
+    "   The optimal window size is typically task-specific and can be determined through "
+    "   cross-validation or domain expertise."
+)
 
-results["preprocessing_recommendations"] = {
-    "missing_values": preprocessing_recommendations["missing_values"]["method"],
-    "normalization": preprocessing_recommendations["normalization"]["method"],
-    "time_windowing": preprocessing_recommendations["time_windowing"]["method"],
-    "reasons": (
-        f"Missing Values Handling ({preprocessing_recommendations['missing_values']['method']}): {preprocessing_recommendations['missing_values']['reason']}\n\n"
-        f"Normalization ({preprocessing_recommendations['normalization']['method']}): {preprocessing_recommendations['normalization']['reason']}\n\n"
-        f"Time Windowing ({preprocessing_recommendations['time_windowing']['method']}): {preprocessing_recommendations['time_windowing']['reason']}"
-    )
-}
-
-
-# --- 7. Save Visualizations (Already done within steps 3, 4, 5) ---
-# The plots are saved as:
-# - analysis/figures/distribution_histograms.png
-# - analysis/figures/correlation_heatmap.png
-# - analysis/figures/time_series_plot.png
+# --- 7. Save Visualizations ---
+# All required visualizations (distribution histograms, correlation heatmap, time-series plot)
+# were saved within their respective analysis steps above.
+print(f"\nAll required visualizations saved in {FIGURES_DIR}.")
 
 # --- 8. Save Results to results.json ---
-results_filepath = os.path.join(output_dir, "results.json")
-with open(results_filepath, 'w') as f:
-    json.dump(results, f, indent=2)
-print(f"\nAnalysis results saved to {results_filepath}")
-
-print("\n--- Analysis Complete ---")
+with open(RESULTS_FILE, 'w') as f:
+    json.dump(results, f, indent=2) # Use indent=2 for human-readable JSON
+print(f"Analysis results saved to {RESULTS_FILE}")

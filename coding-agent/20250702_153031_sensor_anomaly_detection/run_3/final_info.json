@@ -7,8 +7,9 @@
     },
     "model_hyperparameters": {
         "model_type": "SVC",
-        "C": 1.0,
-        "kernel": "rbf",
-        "random_state": 42
+        "C": 0.1,
+        "kernel": "linear",
+        "random_state": 42,
+        "class_weight": "balanced"
     }
 }

@@ -6,9 +6,8 @@
         "f1_score": 0.0
     },
     "model_hyperparameters": {
-        "model_type": "SVC",
-        "C": 1.0,
-        "kernel": "rbf",
+        "model_type": "RandomForestClassifier",
+        "n_estimators": 100,
         "random_state": 42
     }
 }

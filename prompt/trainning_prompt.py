@@ -34,7 +34,12 @@ Your task is to analyze the dataset information located at `{data_info_path}`and
          - All evaluation metrics computed on the test set.
          - Hyperparameters used in the model.
        - Ensure the script is modular and adaptable.
-
+IMPORTANT REQUIREMENTS:
+- Do NOT create dummy/fake/synthetic data
+- Do NOT generate random data if the data file doesn't exist
+- Only work with the actual provided data file
+- If the data file is missing, print an error message and exit gracefully
+- Focus on analyzing the real data provided, not simulated data
 ### Additional Requirements:
 - The prompt must be detailed, specific to the dataset and idea, and follow a common structure for training AI models.
 - Do not include notes or comments in the generated source code.

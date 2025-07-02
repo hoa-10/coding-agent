@@ -24,10 +24,15 @@ def extract_python_code(prompts):
     code = match.group(1).strip() if match else prompts.strip()
     return code
 
-def save_and_run_code(code, filename="analysis/generated_analysis.py"):
+def save_and_run_code(data_path,code, filename="analysis/generated_analysis.py"):
+    if os.path.exists(data_path):
+        result_data_path = os.path.join("analysis", "sensor_data.csv")
+        shutil.copy2(data_path, result_data_path)
+        print(f"📁 Copied {data_path} to result folder")
     try:
         with open(filename, "w", encoding="utf-8") as f:
             f.write(code)
+        
         print(f"🏃 Running {filename}...")
         result = subprocess.run(
             [sys.executable, filename],
@@ -55,7 +60,7 @@ def save_and_run_code(code, filename="analysis/generated_analysis.py"):
         print(f"❌ Error running code: {e}")
         return False
 
-def generate_and_run_analysis():
+def generate_and_run_analysis(data_path="sensor_data.csv"):
     try:
         prompt = analyze_dataset_prompt(data)
         response = model.generate_content(prompt)
@@ -64,7 +69,7 @@ def generate_and_run_analysis():
             code = extract_python_code(response.text)
             
             if code:
-                success = save_and_run_code(code)
+                success = save_and_run_code(data_path, code)
                 
                 if success:
                     print("🎉 Data analysis completed!")
@@ -123,5 +128,5 @@ def auto_analyze_with_retry(max_retries=3):
     print("💥 Failed after all attempts")
     return False
 
-if __name__ == "__main__":
-    auto_analyze_with_retry()
+#if __name__ == "__main__":
+#    auto_analyze_with_retry()

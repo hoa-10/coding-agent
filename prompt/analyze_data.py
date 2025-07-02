@@ -15,6 +15,7 @@ Write a Python script using pandas, numpy, matplotlib, and seaborn to analyze th
 - Compute characteristics (missing values, distribution, correlation, trend, seasonality).
 - Visualize to support analysis.
 - Use LLM reasoning to explain findings.
+- Not using random data or random seed, ensuring reproducibility, even if the path data does not exist, you should consider this requirement
 - Save results in `results.json` with a complete dataset description.
 
 **Steps to Perform**:
@@ -93,7 +94,9 @@ Write a Python script using pandas, numpy, matplotlib, and seaborn to analyze th
      ```
 
 ---
-
+###requirement need:
+- Ensuring you dont use the random data or random seed in the code, so that the results are reproducible.
+- You just use the file path data for analyze data, not using random data or random seed.
 ### Reasoning Requirements
 - **Compare Methods**: For each step (e.g., missing value handling, normalization), compare at least 2 methods (e.g., linear interpolation vs. mean imputation) and explain the chosen method in `results.json`.
 - **Generalize**: Ensure analysis is broad, applicable to various sensor types (e.g., temperature, pressure) and tasks (e.g., classification, forecasting).

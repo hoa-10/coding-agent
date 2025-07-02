@@ -91,6 +91,7 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
 
     return True
 
+
 ##################################
 data = "sensor_data.csv"
 data_info = pd.read_csv(data)

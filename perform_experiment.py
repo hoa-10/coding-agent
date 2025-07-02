@@ -15,24 +15,26 @@ MAX_ITERS = 4
 MAX_RUNS = 5
 MAX_STDERR_OUTPUT = 1500
 
-coder_prompt = """Your goal is to implement the following idea: {title}.
-The proposed experiment is as follows: {idea}.
-You are given a total of up to {max_runs} runs to complete the necessary experiments. You do not need to use all {max_runs}.
+coder_prompt = """Your task is to implement the following idea: {title}
 
-IMPORTANT: Your experiment.py MUST save results to final_info.json in the output directory. 
-First, plan the list of experiments you would like to run. For example, if you are sweeping over a specific hyperparameter, plan each value you would like to test for each run.
-After each run, only save the results of the current run to the final_info.json file in the output directory. Do not aggregate or overwrite results from other runs.
-Note that we already provide the vanilla baseline results, so you do not need to re-run it.
-Ensure code
-For reference, the baseline results are as follows:
-{baseline_results}
-> - When running the command: python experiment.py --out_dir=run_i, only perform the experiment for run number i (that is, index i-1 in your list of parameter settings).
+Proposed Experiment: {idea}
 
-After you complete each change, we will run the command `python experiment.py --out_dir=run_i' where i is the run number and evaluate the results.
-YOUR PROPOSED CHANGE MUST USE THIS COMMAND FORMAT, DO NOT ADD ADDITIONAL COMMAND LINE ARGS.
+Available Runs: Up to {max_runs} (you do not need to use all).
 
+Instructions:
+Propose Experiments:
+Based on the idea and baseline results, propose and justify a sequence of experiments with specific parameter settings.
+Implement in experiment.py:
+Modify the provided experiment.py to include your list of parameter settings.
+Parse --out_dir=run_i to select the i-th experiment’s settings.
+Save results to final_info.json in out_dir for each run.
+Important:
+Do not re-run the baseline; use provided results.
+Modify experiment.py directly; do not just describe changes.
+Use only --out_dir in the command; no additional args.
+Baseline Results: {baseline_results}
+Running: We will run python experiment.py --out_dir=run_i for each proposed experiment.
 IMPORTANT: You must modify the experiment.py file to implement your changes. The file already contains baseline code that you should modify.
-
 You can then implement the next thing on your list.
 
 PLEASE MAKE SURE TO ACTUALLY MODIFY THE EXPERIMENT.PY FILE WITH YOUR CHANGES. DO NOT JUST DESCRIBE WHAT TO DO."""
@@ -115,21 +117,31 @@ def run_experiment(folder_name, run_num, timeout=3600):  # Reduced timeout
             if isinstance(results, dict) and any("means" in str(v) for v in results.values()):
                 results = {k: v["means"] if isinstance(v, dict) and "means" in v else v for k, v in results.items()}
 
-            next_prompt = f"""Run {run_num} completed. Here are the results:
-{results}
+            next_prompt = f"""Run {run_num} completed.  
+Here are the latest results:  
+{results}  
 
-Decide if you need to re-plan your experiments given the result (you often will not need to).
 
-Someone else will be using `notes.txt` to perform a writeup on this in the future.
-Please include *all* relevant information for the writeup on Run {run_num}, including an experiment description and the run number. Be as verbose as necessary.
-> - When running the command: python experiment.py --out_dir=run_i, only perform the experiment for run number i (that is, index i-1 in your list of parameter settings).
-Then, implement the next thing on your list by MODIFYING the experiment.py file.
-We will then run the command `python experiment.py --out_dir=run_{run_num + 1}'.
-YOUR PROPOSED CHANGE MUST USE THIS COMMAND FORMAT, DO NOT ADD ADDITIONAL COMMAND LINE ARGS.
-If you are finished with experiments, respond with 'ALL_COMPLETED'.
-After each run, only save the results of the current run to the final_info.json file in the output directory. Do not aggregate or overwrite results from other runs.
-REMEMBER: Your experiment.py MUST save results to final_info.json in the output directory.
-IMPORTANT: YOU MUST ACTUALLY MODIFY THE EXPERIMENT.PY FILE, NOT JUST DESCRIBE THE CHANGES."""
+1. **Analyze** these results—compare current vs. previous metrics.  
+2. **Decide** if and how to tweak your experiment (hyper‑parameters, architecture, data processing, etc.) to improve the key metric(s).  
+3. **Edit only** the `experiment.py` file to implement your chosen change.  
+   - Do **not** add any new command‑line arguments.  
+   - Keep all logic for saving your run’s outputs to `final_info.json` in the target `--out_dir`.  
+4. **Write** a verbose block of text (for `notes.txt`) that documents:
+   - Which run this is (`Run {run_num}`),  
+   - A clear description of the experiment you just ran,  
+   - What you will change and **why**, linked to the metric differences,  
+   - The exact command we will use next:  
+     ```
+     python experiment.py --out_dir=run_{run_num + 1}
+     ```  
+5. If **no further improvement** is expected or you’ve exhausted your plan, respond with `ALL_COMPLETED`.  
+
+**IMPORTANT**  
+- After your edit, we’ll launch only:  
+  ```bash
+  python experiment.py --out_dir=run_{run_num + 1}
+"""
             
         return result.returncode, next_prompt
         
@@ -209,6 +221,7 @@ def read_file_content(filepath):
 
 
 # PERFORM EXPERIMENTS
+# Modify the plotting phase in perform_experiments function
 def perform_experiments(idea, folder_name, coder, baseline_results) -> bool:
     current_iter = 0
     run = 1
@@ -229,21 +242,17 @@ def perform_experiments(idea, folder_name, coder, baseline_results) -> bool:
             break
             
         try:
-            # Lưu hash và nội dung trước khi AI coder chạy
             old_hash = file_hash(exp_file)
             old_content = read_file_content(exp_file)
             
             print(f"Getting coder output for run {run}, iteration {current_iter}")
             print(f"File hash before coder: {old_hash}")
             
-            # Chạy AI coder
             coder_out = coder.run(next_prompt)
             print(f"Coder output: {coder_out}")
             
-            # Đợi một chút để đảm bảo file được ghi
             time.sleep(1)
             
-            # Kiểm tra hash và nội dung sau khi AI coder chạy
             new_hash = file_hash(exp_file)
             new_content = read_file_content(exp_file)
             
@@ -253,7 +262,6 @@ def perform_experiments(idea, folder_name, coder, baseline_results) -> bool:
                 print("WARNING: experiment.py was not changed by AI coder!")
                 print("This might indicate the AI didn't actually modify the file.")
                 
-                # Thử yêu cầu AI coder một lần nữa với prompt cụ thể hơn
                 force_edit_prompt = f"""
 The experiment.py file was not modified in your previous response. You MUST actually edit the experiment.py file to implement the changes.
 After each run, only save the results of the current run to the final_info.json file in the output directory. Do not aggregate or overwrite results from other runs.
@@ -270,12 +278,8 @@ If you need to make major changes, you can rewrite the entire file using the 'wh
 """
                 print("Forcing file edit with more specific prompt...")
                 
-                # Thử thay đổi edit format nếu diff không hoạt động
                 try:
-                    # Lưu edit format hiện tại
                     current_format = getattr(coder, 'edit_format', 'diff')
-                    
-                    # Nếu đang dùng diff và không hiệu quả, thử whole
                     if current_format == 'diff':
                         print("Switching to 'whole' edit format for major changes...")
                         coder.edit_format = 'whole'
@@ -286,7 +290,6 @@ If you need to make major changes, you can rewrite the entire file using the 'wh
                     print(f"Error with format change: {format_error}")
                     coder_out = coder.run(force_edit_prompt)
                 
-                # Kiểm tra lại sau khi force edit
                 time.sleep(1)
                 final_hash = file_hash(exp_file)
                 final_content = read_file_content(exp_file)
@@ -322,26 +325,107 @@ If you need to make major changes, you can rewrite the entire file using the 'wh
         print("Not all experiments completed due to max iterations.")
         return False
 
-    # Plotting phase
-    print("Starting plotting phase")
-    current_iter = 0
-    next_prompt = """
+    print("Starting plotting phase with user feedback...")
+    
+
+    initial_plot_prompt = """
 Great job! Please modify `plot.py` to generate the most relevant plots for the final writeup. 
 In particular, be sure to fill in the "labels" dictionary with the correct names for each run that you want to plot.
 Only the runs in the `labels` dictionary will be plotted, so make sure to include all relevant runs.
+
+Create plots that clearly show:
+- Performance comparisons between different runs
+- Key metrics and their trends
+- Clear legends and labels
+- Professional appearance
+
 We will be running the command `python plot.py` to generate the plots.
 """
-    while current_iter < MAX_ITERS:
-        try:
-            coder.run(next_prompt)
-            return_code, next_prompt = run_plotting(folder_name)
-            if return_code == 0:
-                break
-            current_iter += 1
-        except Exception as e:
-            print(f"Plotting phase error: {e}")
-            current_iter += 1
+    
+    try:
+        coder.run(initial_plot_prompt)
+        
+        while True:
+            print("\n" + "="*60)
+            print("📊 PLOTTING PHASE")
+            print("="*60)
             
+            return_code, error_msg = run_plotting(folder_name)
+            
+            if return_code != 0:
+                print(f"❌ Plotting failed: {error_msg}")
+                print("🔧 Trying to fix plotting errors...")
+                
+                fix_prompt = f"""
+Plotting failed with error: {error_msg}
+Please fix the plot.py file to resolve this error.
+Make sure to check:
+- All required imports are present
+- Data files exist and are readable
+- Plot syntax is correct
+- Output directory is accessible
+"""
+                try:
+                    coder.run(fix_prompt)
+                    continue  
+                except Exception as e:
+                    print(f"Failed to fix plotting error: {e}")
+                    break
+            
+            print("✅ Plots generated successfully!")
+            print(f"📁 Check plots in folder: {folder_name}")
+            print("\nPlease review the generated plots in the folder.")
+
+            print("\n" + "="*50)
+            print("👤 USER FEEDBACK")
+            print("="*50)
+            
+            user_feedback = input("📝 Your feedback on the plots (type 'ok' if satisfied, or describe changes needed): ").strip()
+            
+            if user_feedback.lower() == 'ok':
+                print("✅ Plots approved by user!")
+                break
+            
+            print(f"📝 Applying user feedback: {user_feedback}")
+            
+            feedback_prompt = f"""
+The user has reviewed the generated plots and provided this feedback:
+
+USER FEEDBACK:
+{user_feedback}
+
+Please modify the plot.py file to address this feedback. Consider:
+- Changing colors, styles, or plot types
+- Modifying titles, labels, legends
+- Adding or removing plot elements
+- Improving readability and visual appeal
+- Making data comparisons clearer
+- Adding statistical information if needed
+- Changing figure sizes or layouts
+
+Make sure the modified plot.py still:
+- Reads the results from all run directories
+- Generates meaningful visualizations
+- Saves plots with appropriate filenames
+- Works with the existing data structure
+
+ACTUALLY MODIFY THE PLOT.PY FILE - don't just describe what to do.
+"""
+            
+            try:
+                print("🔧 Applying feedback with Aider...")
+                coder.run(feedback_prompt)
+                print("✅ Feedback applied, regenerating plots...")
+                
+            except Exception as e:
+                print(f"❌ Error applying feedback: {e}")
+                retry = input("❓ Would you like to try again? (yes/no): ")
+                if retry.lower() != "yes":
+                    break
+                    
+    except Exception as e:
+        print(f"Plotting phase error: {e}")
+        
     # Notes phase
     try:
         next_prompt = """

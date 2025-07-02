@@ -1,0 +1,55 @@
+# Title: Sensor Anomaly Detection Using Window-Based Classification
+# Experiment description: Train a classifier (e.g., Random Forest, Logistic Regression, or LSTM) on time-windowed sensor data to detect anomalies. The dataset is split into overlapping windows to preserve temporal patterns. The goal is to predict whether a window of sensor readings contains an anomaly using classical machine learning (e.g., scikit-learn) or deep learning (e.g., LSTM). Models are evaluated using validation accuracy, precision, recall, and F1-score.
+## Run 0: Baseline
+Results: {'evaluation_metrics': {'accuracy': 1.0, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'SVC', 'C': 1.0, 'kernel': 'rbf', 'random_state': 42}}
+Description: Baseline results.
+
+## Run 1: RandomForestClassifier (n_estimators=100)
+Results: {'evaluation_metrics': {'accuracy': 1.0, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'RandomForestClassifier', 'n_estimators': 100, 'random_state': 42}}
+Description: This experiment used a RandomForestClassifier with 100 estimators. The results show an accuracy of 1.0, but precision, recall, and F1-score for the anomaly class are all 0.0. This indicates that the model is likely predicting only the majority (non-anomaly) class, failing to identify any anomalies. This is a classic symptom of class imbalance.
+
+## Run 2: LogisticRegression (solver='liblinear', class_weight='balanced')
+Results: {'evaluation_metrics': {'accuracy': 0.9655172413793104, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'LogisticRegression', 'solver': 'liblinear', 'random_state': 42, 'class_weight': 'balanced'}}
+Description: This experiment used a LogisticRegression model with `class_weight='balanced'` to address the class imbalance. While the overall accuracy slightly decreased, the precision, recall, and F1-score for the anomaly class remain 0.0. This indicates that even with class weighting, the model is still failing to identify any anomalies and is predominantly predicting the majority class. This suggests that the model might not be complex enough or the class imbalance is too severe for this approach alone.
+
+## Run 3: SVC (C=0.1, kernel='linear', class_weight='balanced')
+Results: {'evaluation_metrics': {'accuracy': 1.0, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'SVC', 'C': 0.1, 'kernel': 'linear', 'random_state': 42, 'class_weight': 'balanced'}}
+Description: This experiment used an SVC model with a linear kernel and `class_weight='balanced'`. Similar to previous runs, the accuracy is high, but precision, recall, and F1-score for the anomaly class are all 0.0. This confirms that even with class weighting and a different linear model, the models are consistently failing to detect any anomalies, indicating a persistent issue with learning from the minority class.
+
+## Run 4: RandomForestClassifier (n_estimators=100, class_weight='balanced')
+Results: {'evaluation_metrics': {'accuracy': 1.0, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'RandomForestClassifier', 'n_estimators': 100, 'random_state': 42, 'class_weight': 'balanced'}}
+Description: This experiment used a RandomForestClassifier with 100 estimators and `class_weight='balanced'`. Despite using a more robust ensemble model and addressing class imbalance, the results are consistent with previous runs: 1.0 accuracy but 0.0 precision, recall, and F1-score for the anomaly class. This indicates a persistent failure to detect any anomalies, suggesting that the models are still defaulting to predicting the majority class. The issue might stem from extremely severe class imbalance or features that are not sufficiently discriminative for anomaly detection.
+
+## Run 4: RandomForestClassifier (n_estimators=100, class_weight='balanced')
+Results: {'evaluation_metrics': {'accuracy': 1.0, 'precision': 0.0, 'recall': 0.0, 'f1_score': 0.0}, 'model_hyperparameters': {'model_type': 'RandomForestClassifier', 'n_estimators': 100, 'random_state': 42, 'class_weight': 'balanced'}}
+Description: This experiment used a RandomForestClassifier with 100 estimators and `class_weight='balanced'`. Despite using a more robust ensemble model and addressing class imbalance, the results are consistent with previous runs: 1.0 accuracy but 0.0 precision, recall, and F1-score for the anomaly class. This indicates a persistent failure to detect any anomalies, suggesting that the models are still defaulting to predicting the majority class. The issue might stem from extremely severe class imbalance or features that are not sufficiently discriminative for anomaly detection.
+
+Next Change: For Run 5, we will proceed with the `SVC` model using an `rbf` kernel and `class_weight='balanced'`. This is the final experiment in our current plan. The RBF kernel is a non-linear kernel that might be able to capture more complex patterns in the data compared to linear models. While previous attempts with `class_weight` have not yielded positive anomaly detection, it's important to test this configuration as a last classical ML approach before considering more advanced imbalance handling techniques or feature engineering.
+
+Next command:
+python experiment.py --out_dir=run_5
+
+## Plotting Results
+
+The `plot.py` script generates individual bar charts for each experiment run, providing a detailed breakdown of its performance across key evaluation metrics. Each plot focuses on a single experiment, making it easy to inspect its specific accuracy, precision, recall, and F1-score.
+
+**Description of Plots:**
+
+For each experiment run (from `run_0` to `run_5`), a separate PNG image is generated in the `plots/` directory. Each image displays a bar chart with the following characteristics:
+
+*   **Title:** "Performance for [Experiment Label]" (e.g., "Performance for SVC (Baseline)", "Performance for RandomForest (Balanced)"). This clearly indicates which experiment's results are being displayed.
+*   **X-axis:** Labeled "Metrics", showing four bars representing "Accuracy", "Precision", "Recall", and "F1 Score".
+*   **Y-axis:** Labeled "Score", ranging from 0 to 1.1, suitable for displaying metric scores.
+*   **Bars:** Each bar represents the score for a specific metric for that particular experiment run. The exact numerical value is displayed on top of each bar for precise reading.
+*   **Grid:** A horizontal grid is included to aid in reading the scores.
+
+These plots are designed to offer an in-depth view of each model's performance profile, highlighting its strengths and weaknesses (particularly regarding anomaly detection, as indicated by precision, recall, and F1-score).
+
+**Generated Plot Filenames:**
+
+*   `plots/run_0_performance.png`: Detailed performance of the Baseline SVC model.
+*   `plots/run_1_performance.png`: Detailed performance of the RandomForest model (without class weighting).
+*   `plots/run_2_performance.png`: Detailed performance of the Logistic Regression model with balanced class weights.
+*   `plots/run_3_performance.png`: Detailed performance of the SVC model with a linear kernel and balanced class weights.
+*   `plots/run_4_performance.png`: Detailed performance of the RandomForest model with balanced class weights.
+*   `plots/run_5_performance.png`: Detailed performance of the SVC model with an RBF kernel and balanced class weights.
