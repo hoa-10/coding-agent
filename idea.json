@@ -1,7 +1,7 @@
 {
   "Name": "sensor_anomaly_detection",
-  "Title": "Sensor Anomaly Detection Using Window-Based Classification",
-  "Experiment": "Train a classifier (e.g., Random Forest, Logistic Regression, or LSTM) on time-windowed sensor data to detect anomalies. The dataset is split into overlapping windows to preserve temporal patterns. The goal is to predict whether a window of sensor readings contains an anomaly using classical machine learning (e.g., scikit-learn) or deep learning (e.g., LSTM). Models are evaluated using validation accuracy, precision, recall, and F1-score.",
+  "Title": "Deep-Learning-Based NDT-Sensor Anomaly Detection",
+  "Experiment": "building a deep learning model to classify between two classes Anomaly (0) and normal (1) using the provided dataset. try to do Experiment with different architectures and hyperparameters to find the best model.",
   "Interestingness": 7,
   "Feasibility": 8,
   "Novelty": 5,

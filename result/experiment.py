@@ -1,125 +1,137 @@
-import pandas as pd
 import numpy as np
 import os
-import json
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import sys
+import json
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras.callbacks import EarlyStopping
 
-def run_pipeline():
-    # --- 1. Data Loading and Initial Check ---
-    file_path = 'sensor_data.csv'
-    try:
-        df = pd.read_csv(file_path)
-    except FileNotFoundError:
-        print("Error: sensor_data.csv not found.")
-        sys.exit(1) # Exit gracefully
+# Set seeds for reproducibility
+tf.random.set_seed(42)
+np.random.seed(42)
 
-    # --- 2. Preprocessing ---
+# Dataset Information:
+# The dataset is located at `pect_ndt_full_dataset.npz`.
+# You *must* use the following exact code snippet to load the data:
+dataset_path = 'pect_ndt_full_dataset.npz'
+if not os.path.exists(dataset_path):
+    print(f"Error: Dataset file not found at {dataset_path}")
+    sys.exit(1)
 
-    # Missing Value Imputation (Mean imputation for each column)
-    for col in ['sensor_1', 'sensor_2', 'sensor_3']:
-        df[col] = df[col].fillna(df[col].mean())
+data = np.load(dataset_path)
+X_train = data['X_train']
+y_train = data['y_train']
+X_valid = data['X_valid']
+y_valid = data['y_valid']
+X_scan = data['X_scan']
+X_in_corr = data['X_in_corr']
+Xc = data['Xc']
+Xg = data['Xg']
+m = data['m']
+st = data['st']
 
-    # Calculate global mean and std for anomaly label generation after imputation
-    global_sensor_means = {col: df[col].mean() for col in ['sensor_1', 'sensor_2', 'sensor_3']}
-    global_sensor_stds = {col: df[col].std() for col in ['sensor_1', 'sensor_2', 'sensor_3']}
+# 1. Data Preparation and Splitting
+X_combined = np.concatenate((X_train, X_valid), axis=0)
+y_combined = np.concatenate((y_train, y_valid), axis=0)
 
-    # Windowing and Feature Extraction
-    window_size = 10
-    overlap = 5
-    stride = window_size - overlap
+# Stratified split: 80% train, 20% (validation + test)
+X_train_combined, X_val_test, y_train_combined, y_val_test = train_test_split(
+    X_combined, y_combined, test_size=0.2, random_state=42, stratify=y_combined
+)
 
-    X_windows = []
-    y_labels = []
+# Split the 20% into 10% validation and 10% test
+X_val, X_test, y_val, y_test = train_test_split(
+    X_val_test, y_val_test, test_size=0.5, random_state=42, stratify=y_val_test
+)
 
-    for i in range(0, len(df) - window_size + 1, stride):
-        window_df = df.iloc[i : i + window_size]
-        
-        # Extract features (mean, std, min, max for each sensor)
-        features = []
-        for col in ['sensor_1', 'sensor_2', 'sensor_3']:
-            features.extend([
-                window_df[col].mean(),
-                window_df[col].std(),
-                window_df[col].min(),
-                window_df[col].max()
-            ])
-        X_windows.append(features)
+# Reshape data for StandardScaler (flatten the last two dimensions)
+X_train_combined = X_train_combined.reshape(X_train_combined.shape[0], -1)
+X_val = X_val.reshape(X_val.shape[0], -1)
+X_test = X_test.reshape(X_test.shape[0], -1)
 
-        # Determine window's anomaly label
-        is_window_anomaly = 0
-        for col in ['sensor_1', 'sensor_2', 'sensor_3']:
-            global_mean = global_sensor_means[col]
-            global_std = global_sensor_stds[col]
-            upper_threshold = global_mean + 3 * global_std
-            lower_threshold = global_mean - 3 * global_std
+# Apply StandardScaler to features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train_combined)
+X_val_scaled = scaler.transform(X_val)
+X_test_scaled = scaler.transform(X_test)
 
-            if ((window_df[col] > upper_threshold) | (window_df[col] < lower_threshold)).any():
-                is_window_anomaly = 1
-                break # Anomaly found in this window, no need to check further sensors
+# 2. Model Configuration
+model = Sequential([
+    InputLayer(input_shape=(X_train_scaled.shape[1],)),
+    Dense(64, activation='relu'),
+    Dense(32, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
 
-        y_labels.append(is_window_anomaly)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    X = np.array(X_windows)
-    y = np.array(y_labels)
+# 3. Training Process
+epochs = 50
+batch_size = 32
 
-    # Feature Scaling
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
-    # --- 4. Training Process ---
+history = model.fit(
+    X_train_scaled, y_train_combined,
+    epochs=epochs,
+    batch_size=batch_size,
+    validation_data=(X_val_scaled, y_val),
+    callbacks=[early_stopping],
+    verbose=0 # Suppress verbose output during training
+)
 
-    # Split data into training, validation, and test sets
-    # First split: 90% for train+val, 10% for test
-    X_train_val, X_test, y_train_val, y_test = train_test_split(
-        X_scaled, y, test_size=0.1, random_state=42, stratify=y
-    )
+# 4. Evaluation
+y_pred_proba = model.predict(X_test_scaled).flatten()
+y_pred = (y_pred_proba > 0.5).astype(int)
 
-    # Second split: From train+val, split 8/9 for train, 1/9 for validation
-    # This results in: (0.9 * 8/9) = 0.8 (80%) train, (0.9 * 1/9) = 0.1 (10%) validation
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val, test_size=(0.1/0.9), random_state=42, stratify=y_train_val
-    )
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, average='macro')
+recall = recall_score(y_test, y_pred, average='macro')
+f1 = f1_score(y_test, y_pred, average='macro')
+roc_auc = roc_auc_score(y_test, y_pred_proba)
 
-    # Model Configuration
-    model = SVC(random_state=42) # Using default kernel='rbf', C=1.0
+print(f"Test Accuracy: {accuracy:.4f}")
+print(f"Test Precision (macro): {precision:.4f}")
+print(f"Test Recall (macro): {recall:.4f}")
+print(f"Test F1-score (macro): {f1:.4f}")
+print(f"Test ROC AUC: {roc_auc:.4f}")
 
-    # Train the model
-    model.fit(X_train, y_train)
+# 5. Save Results
+results_dir = 'result'
+os.makedirs(results_dir, exist_ok=True)
 
-    # --- 5. Evaluation ---
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, pos_label=1, zero_division=0)
-    recall = recall_score(y_test, y_pred, pos_label=1, zero_division=0)
-    f1 = f1_score(y_test, y_pred, pos_label=1, zero_division=0)
-
-    # --- 6. Save Results ---
-    results_dir = 'result'
-    os.makedirs(results_dir, exist_ok=True)
-
-    results = {
-        "evaluation_metrics": {
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1_score": f1
-        },
-        "model_hyperparameters": {
-            "model_type": "SVC",
-            "C": 1.0,
-            "kernel": "rbf",
-            "random_state": 42
-        }
+results_data = {
+    "evaluation_metrics": {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "roc_auc": roc_auc
+    },
+    "hyperparameters": {
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "optimizer": "adam",
+        "loss_function": "binary_crossentropy",
+        "model_layers": [
+            {"type": "InputLayer", "units": X_train_scaled.shape[1]},
+            {"type": "Dense", "units": 64, "activation": "relu"},
+            {"type": "Dense", "units": 32, "activation": "relu"},
+            {"type": "Dense", "units": 1, "activation": "sigmoid"}
+        ],
+        "early_stopping_patience": 5,
+        "data_split_random_state": 42,
+        "tensorflow_seed": 42,
+        "numpy_seed": 42
     }
+}
 
-    results_file_path = os.path.join(results_dir, 'results.json')
-    with open(results_file_path, 'w') as f:
-        json.dump(results, f, indent=4)
+results_file_path = os.path.join(results_dir, 'results.json')
+with open(results_file_path, 'w') as f:
+    json.dump(results_data, f, indent=4)
 
-if __name__ == "__main__":
-    run_pipeline()
+print(f"\nResults saved to {results_file_path}")

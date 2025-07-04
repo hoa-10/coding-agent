@@ -24,6 +24,7 @@ Available Runs: Up to {max_runs} (you do not need to use all).
 Instructions:
 Propose Experiments:
 Based on the idea and baseline results, propose and justify a sequence of experiments with specific parameter settings.
+you incapable to plan for all of process, you just need plan for first experiment., each result after should be analyzed by you to adjust other best approach for suitable
 Implement in experiment.py:
 Modify the provided experiment.py to include your list of parameter settings.
 Parse --out_dir=run_i to select the i-th experiment’s settings.

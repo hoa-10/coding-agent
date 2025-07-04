@@ -17,7 +17,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
-data = "sensor_data.csv"
+data = "pect_ndt_full_dataset.npz"
 
 def extract_python_code(prompts):
     match = re.search(r"```(?:python)?\s*(.*?)```", prompts, re.DOTALL)
@@ -26,7 +26,7 @@ def extract_python_code(prompts):
 
 def save_and_run_code(data_path,code, filename="analysis/generated_analysis.py"):
     if os.path.exists(data_path):
-        result_data_path = os.path.join("analysis", "sensor_data.csv")
+        result_data_path = os.path.join("analysis", "pect_ndt_full_dataset.npz")
         shutil.copy2(data_path, result_data_path)
         print(f"📁 Copied {data_path} to result folder")
     try:
@@ -60,7 +60,7 @@ def save_and_run_code(data_path,code, filename="analysis/generated_analysis.py")
         print(f"❌ Error running code: {e}")
         return False
 
-def generate_and_run_analysis(data_path="sensor_data.csv"):
+def generate_and_run_analysis(data_path="pect_ndt_full_data.npz"):
     try:
         prompt = analyze_dataset_prompt(data)
         response = model.generate_content(prompt)

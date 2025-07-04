@@ -1,72 +1,188 @@
 {
-  "dataset_info": {
-    "source": "real",
-    "size": "1440 rows x 3 columns",
-    "type": "multivariate time-series",
-    "data_types": [
-      "float64",
-      "float64",
-      "float64"
-    ],
-    "data_types_note": "All columns successfully interpreted as numeric, suitable for quantitative analysis."
-  },
-  "missing_values": {
-    "sensor_1": "2.43%",
-    "sensor_2": "3.68%",
-    "sensor_3": "3.54%",
-    "handling_method": "Linear Interpolation",
-    "reason": "For multivariate time-series data like this sensor dataset, **Linear Interpolation** is generally the most recommended method for handling missing values. It estimates missing points by drawing a straight line between the known values immediately before and after the missing data. This approach is superior because it preserves the temporal order and continuity of the data, which are crucial characteristics of time series. It helps maintain potential trends and seasonality patterns, making the imputed data more realistic for time-dependent tasks (e.g., forecasting, anomaly detection). **Alternative: Mean/Median Imputation**. While simple, these methods fill all missing values with a single static value (the column's mean or median). This can significantly distort the original distribution, reduce variance, and destroy temporal dependencies or trends within the series, leading to inaccurate models or misleading insights. For sensor data, maintaining the natural flow and variability is often paramount, making linear interpolation a more robust choice for short to moderate gaps."
-  },
-  "distribution": {
-    "sensor_1": {
-      "mean": 26.51174205870259,
-      "std": 6.462534436600828,
-      "min": 15.663918599990817,
-      "max": 37.42923816028696
+    "dataset_info": {
+        "X_train": {
+            "shape": [
+                15456,
+                500,
+                1
+            ],
+            "dtype": "float64"
+        },
+        "y_train": {
+            "shape": [
+                15456
+            ],
+            "dtype": "int32"
+        },
+        "X_valid": {
+            "shape": [
+                10304,
+                500,
+                1
+            ],
+            "dtype": "float64"
+        },
+        "y_valid": {
+            "shape": [
+                10304
+            ],
+            "dtype": "int32"
+        },
+        "X_scan": {
+            "shape": [
+                25761,
+                500,
+                1
+            ],
+            "dtype": "float64"
+        },
+        "X_in_corr": {
+            "shape": [
+                161,
+                160,
+                500
+            ],
+            "dtype": "float64"
+        },
+        "Xc": {
+            "shape": [
+                711,
+                500
+            ],
+            "dtype": "float64"
+        },
+        "Xg": {
+            "shape": [
+                25049,
+                500
+            ],
+            "dtype": "float64"
+        },
+        "m": {
+            "shape": [
+                1,
+                500,
+                1
+            ],
+            "dtype": "float64"
+        },
+        "st": {
+            "shape": [
+                1,
+                500,
+                1
+            ],
+            "dtype": "float64"
+        }
     },
-    "sensor_2": {
-      "mean": 85.7303460407885,
-      "std": 11.846940035620987,
-      "min": 64.39496375166105,
-      "max": 106.80907862626238
+    "label_distributions": {
+        "y_train": {
+            "counts": {
+                "0": 15029,
+                "1": 427
+            },
+            "total": 15456,
+            "percentage": {
+                "0": "97.24%",
+                "1": "2.76%"
+            }
+        },
+        "y_valid": {
+            "counts": {
+                "0": 10020,
+                "1": 284
+            },
+            "total": 10304,
+            "percentage": {
+                "0": "97.24%",
+                "1": "2.76%"
+            }
+        }
     },
-    "sensor_3": {
-      "mean": 25.99626709271704,
-      "std": 4.507069215972398,
-      "min": 14.584973680558782,
-      "max": 40.27070477348799
+    "global_signal_statistics": {
+        "X_train": {
+            "mean": 1.0792294594229251e-14,
+            "std": 0.9999998900751302,
+            "min": -7.056056911884795,
+            "max": 7.280649669227083,
+            "median": -0.025842401527920188
+        },
+        "X_scan": {
+            "mean": 0.0014492367025431413,
+            "std": 1.0004328115994363,
+            "min": -7.0660073514046795,
+            "max": 7.280649669227083,
+            "median": -0.025379125721112148
+        },
+        "Xc": {
+            "mean": 0.08864829138949448,
+            "std": 1.3767955725040784,
+            "min": -4.726041908504586,
+            "max": 4.822827732061161,
+            "median": 0.1312220746489563
+        },
+        "Xg": {
+            "mean": -0.001058808819324094,
+            "std": 0.987532718260007,
+            "min": -7.0660073514046795,
+            "max": 7.280649669227083,
+            "median": -0.029049972368833544
+        }
     },
-    "notes": "Descriptive statistics provide a quick summary of the central tendency (mean), dispersion (standard deviation), and range (min/max) for each sensor. Comparing these values across sensors reveals their typical operating ranges and inherent variability. For example, a sensor with a high standard deviation relative to its mean might be more dynamic or noisy, indicating frequent fluctuations. Conversely, a low standard deviation suggests stable readings. The min and max values show the full measurement span for each sensor, which is crucial for identifying potential outliers or sensor calibration issues. These statistics are fundamental for understanding the nature of the data before applying complex models or setting thresholds."
-  },
-  "correlation": {
-    "matrix": [
-      [
-        1.0,
-        0.7441060130896865,
-        0.8590858761373682
-      ],
-      [
-        0.7441060130896865,
-        1.0,
-        0.6444200834597675
-      ],
-      [
-        0.8590858761373682,
-        0.6444200834597675,
-        1.0
-      ]
-    ],
-    "notes": "High correlation (0.74) between sensor_1 and sensor_2: suggests they measure strongly related phenomena or are heavily influenced by common factors. This redundancy might be useful for feature engineering (e.g., creating combined features or using one as a proxy for another) or for dimensionality reduction in modeling if the goal is to minimize input features and reduce multicollinearity issues. However, for anomaly detection, highly correlated sensors can be useful for cross-validation of readings. High correlation (0.86) between sensor_1 and sensor_3: suggests they measure strongly related phenomena or are heavily influenced by common factors. This redundancy might be useful for feature engineering (e.g., creating combined features or using one as a proxy for another) or for dimensionality reduction in modeling if the goal is to minimize input features and reduce multicollinearity issues. However, for anomaly detection, highly correlated sensors can be useful for cross-validation of readings. Moderate correlation (0.64) between sensor_2 and sensor_3: they share some relationship but also provide distinct information. This balance can be beneficial for models that leverage multiple correlated inputs, as it adds predictive power without significant redundancy or severe multicollinearity problems."
-  },
-  "trend_seasonality": {
-    "trend": "present in some sensors (e.g., Sensor 1 shows an increasing trend)",
-    "seasonality": "present in some sensors (e.g., Sensor 2 shows a strong daily cycle)",
-    "notes": "Visual inspection of the time-series plots is crucial for identifying underlying patterns. For this dataset, the following observations can be made: **Trend:** Sensor 1 displays a noticeable increasing trend over the 1440 minutes (24 hours), suggesting a gradual, long-term change in the measured phenomenon (e.g., ambient temperature rising, component warming up). Sensor 3, conversely, appears relatively stable without a clear long-term trend. Trends are important for forecasting as they represent the overall direction of the data. **Seasonality:** Sensor 2 clearly exhibits a strong daily cyclical pattern, completing approximately one full oscillation over the 1440 minutes. This indicates a strong periodic influence, which is common in sensor data due to diurnal cycles (day/night, temperature changes), human activity patterns, or recurring operational schedules. Sensor 1 also contains subtle oscillations superimposed on its trend, suggesting a weaker seasonal component. Recognizing these patterns (trend and seasonality) is fundamental for any time-series analysis task. For example, forecasting models must explicitly account for these components to make accurate predictions, and anomaly detection algorithms often define anomalies as deviations from these expected trend/seasonal behaviors."
-  },
-  "preprocessing_recommendations": {
-    "missing_values": "Linear Interpolation",
-    "normalization": "MinMaxScaler",
-    "time_windowing": "5-10 minute sliding windows (for feature extraction or sequence models)",
-    "reasons": "**Missing Values (Linear Interpolation):** As detailed previously, linear interpolation is the recommended method for handling missing values in time-series data. It maintains the temporal order and continuity of the data, which is essential for preserving the integrity of trends and seasonality for various time-series analysis tasks (e.g., forecasting, anomaly detection, classification of states).\n**Normalization (MinMaxScaler vs. StandardScaler):**    *   **MinMaxScaler:** Scales features to a fixed range, typically [0, 1]. This is highly        effective for machine learning algorithms that are sensitive to the magnitude of        input features (e.g., neural networks, K-Nearest Neighbors, Support Vector Machines).        It ensures that sensors with naturally larger value ranges (e.g., temperature in Celsius        vs. pressure in Pascals) do not dominate the learning process simply due to their scale.        It preserves the shape of the original distribution.\n   *   **StandardScaler:** (Z-score normalization) scales data to have a mean of 0 and a        standard deviation of 1. It is beneficial for algorithms that assume a Gaussian        distribution or are sensitive to variance (e.g., linear regression, logistic regression,        PCA). It's robust to small outliers but can be affected by extreme ones.\n   **Recommendation:** For general sensor data and a wide range of tasks, **MinMaxScaler**    is often a safer and robust initial choice. It ensures all features contribute proportionately    without being overly sensitive to potential outliers (though extreme outliers would still affect its range).    The choice ultimately depends on the specific machine learning model and the expected data distribution.\n**Time-Windowing (e.g., 5-10 minute sliding windows):** This technique is fundamental for transforming continuous time-series data into discrete samples, which is often required by supervised machine learning algorithms. A 'sliding window' approach creates overlapping segments of data, generating more training samples and leveraging temporal context.    *   For **classification tasks** (e.g., detecting an event, classifying a system state),        each window becomes an input sample. Features (e.g., mean, standard deviation, min/max of        sensor values within the window) are then extracted from it. The window represents the        'context' for classification.\n   *   For **forecasting tasks** (e.g., predicting the next N minutes), a window of past        observations is used to predict future values. The window size defines the look-back period.\n   A 5-10 minute window (corresponding to 5 to 10 data points for minute-level data) is a    reasonable starting point for many sensor applications. It's short enough to capture    fine-grained temporal patterns and changes, yet long enough to provide sufficient context.    The optimal window size is typically task-specific and can be determined through    cross-validation or domain expertise."
-  }
+    "preprocessing_info": {
+        "normalization_mean_shape": [
+            1,
+            500,
+            1
+        ],
+        "normalization_mean_sample": [
+            -0.7433822213230057,
+            -0.7519376250400216,
+            -0.753648132752122,
+            -0.7552037014767782,
+            -0.7566605263062575,
+            "...",
+            -0.7360121531086897,
+            -0.7393838403047048,
+            -0.7424398252470865,
+            -0.7451683530063311,
+            -0.7476368105698711
+        ],
+        "normalization_std_shape": [
+            1,
+            500,
+            1
+        ],
+        "normalization_std_sample": [
+            0.006309938449197285,
+            0.006334069626309095,
+            0.006327759009527499,
+            0.0063727489446042535,
+            0.006313032917567672,
+            "...",
+            0.006255190126724827,
+            0.006334819264467224,
+            0.006320831687810404,
+            0.0063516638912508635,
+            0.0063847962890038355
+        ],
+        "description": "The 'm' and 'st' arrays are provided for z-score normalization (standardization) of the signals. Each array contains 500 values, corresponding to the mean and standard deviation for each of the 500 time points across a reference dataset (e.g., the entire training set or a large good-signal population). Signals should be normalized as `X_normalized = (X - m) / st`. Their shape (1, 500, 1) is designed for convenient broadcasting when applied to signal arrays of shape (N, 500, 1)."
+    },
+    "summary_and_recommendations": {
+        "findings": [
+            "**Class Imbalance**: Significant class imbalance detected in training data. Good samples: 15029 (97.24%), Defect samples: 427 (2.76%). The ratio of Good to Defect samples is approximately 35.20:1.",
+            "**Signal Characteristics**: The 'Average PECT Signal: Good vs. Defect' plots clearly show distinct differences between signal waveforms from good and defective regions.Specifically, defect signals tend to exhibit:  - A notably lower peak amplitude compared to good signals.  - A delayed time-to-peak or a broader peak.  - A slower decay rate, especially observed in the latter half of the signal (after the main peak).  - Potential shifts in the overall baseline or a prolonged recovery time."
+        ],
+        "recommendations": [
+            "**Normalization**: It is highly recommended to normalize (standardize) the input signals using the provided 'm' and 'st' arrays. This operation `(X - m) / st` should be applied consistently to X_train, X_valid, and X_scan. Normalization helps stabilize model training and improves performance for most machine learning algorithms.",
+            "**Address Class Imbalance**: Given the detected class imbalance, consider strategies such as:   - **Resampling**: Oversampling the minority class (e.g., using SMOTE or simple duplication) or undersampling the majority class.   - **Weighted Loss Functions**: Using a loss function that penalizes misclassifications of the minority class more heavily.   - **Ensemble Methods**: Bagging or boosting techniques designed for imbalanced datasets.",
+            "**Feature Engineering/Model Choice**:   - The distinct waveform differences suggest that features like peak amplitude, time-to-peak, decay characteristics, and area under the curve would be highly discriminative.   - Deep learning models (e.g., 1D Convolutional Neural Networks (CNNs) or Recurrent Neural Networks (RNNs) like LSTMs) are well-suited for learning these complex temporal features directly from the raw signals without explicit feature engineering.   - Frequency domain analysis (e.g., using Fast Fourier Transform) could also reveal discriminative features related to signal damping or resonance shifts.",
+            "**Validation Strategy**: Utilize the provided X_valid and y_valid sets for objective model performance evaluation and hyperparameter tuning to avoid overfitting to the training data.",
+            "**Spatial Context**: While not directly used in classification, the X_in_corr array provides spatial context. If the goal is defect localization or mapping, consider integrating this spatial information into a downstream task (e.g., by treating signal features as image pixels for a 2D CNN)."
+        ]
+    },
+    "plot_paths": [
+        "analysis/figures/signal_comparison_mean_median.png",
+        "analysis/figures/example_signals.png"
+    ]
 }

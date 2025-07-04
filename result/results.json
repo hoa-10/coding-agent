@@ -1,14 +1,40 @@
 {
     "evaluation_metrics": {
-        "accuracy": 1.0,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0
+        "accuracy": 0.9836956521739131,
+        "precision": 0.8977310012367179,
+        "recall": 0.7658092266171881,
+        "f1_score": 0.8178622654087796,
+        "roc_auc": 0.9817716679317422
     },
-    "model_hyperparameters": {
-        "model_type": "SVC",
-        "C": 1.0,
-        "kernel": "rbf",
-        "random_state": 42
+    "hyperparameters": {
+        "epochs": 50,
+        "batch_size": 32,
+        "optimizer": "adam",
+        "loss_function": "binary_crossentropy",
+        "model_layers": [
+            {
+                "type": "InputLayer",
+                "units": 500
+            },
+            {
+                "type": "Dense",
+                "units": 64,
+                "activation": "relu"
+            },
+            {
+                "type": "Dense",
+                "units": 32,
+                "activation": "relu"
+            },
+            {
+                "type": "Dense",
+                "units": 1,
+                "activation": "sigmoid"
+            }
+        ],
+        "early_stopping_patience": 5,
+        "data_split_random_state": 42,
+        "tensorflow_seed": 42,
+        "numpy_seed": 42
     }
 }

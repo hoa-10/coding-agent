@@ -93,30 +93,29 @@ def do_idea(base_dir, results_dir, idea, model="gpt-3.5-turbo", log_file=False):
 
 
 ##################################
-data = "sensor_data.csv"
-data_info = pd.read_csv(data)
+data = "pect_ndt_full_dataset.npz"
 idea = json.load(open("idea.json", encoding="utf-8"))
 results_dir = "coding-agent"
 os.makedirs(results_dir, exist_ok=True)
 
 # Step 1: Auto analyze with retry
-print("Step 1: Starting auto analysis...")
-auto_success = auto_analyze_with_retry()
-if not auto_success:
-    print("❌ Auto analysis failed. Stopping workflow.")
-    sys.exit(1)
-
-print("✅ Auto analysis completed successfully!")
-
-# Step 2: Generate instruct prompt
-print("Step 2: Generating instruct prompt...")
-prompt_success = generate_instruct_prompt(data, data_info, idea)
-if not prompt_success:
-    print("❌ Instruct prompt generation failed. Stopping workflow.")
-    sys.exit(1)
-
-print("✅ Instruct prompt generated successfully!")
-
+#print("Step 1: Starting auto analysis...")
+#auto_success = auto_analyze_with_retry()
+#if not auto_success:
+#    print("❌ Auto analysis failed. Stopping workflow.")
+#    sys.exit(1)
+#
+#print("✅ Auto analysis completed successfully!")
+#
+## Step 2: Generate instruct prompt
+#print("Step 2: Generating instruct prompt...")
+#prompt_success = generate_instruct_prompt(data, data_info, idea)
+#if not prompt_success:
+#    print("❌ Instruct prompt generation failed. Stopping workflow.")
+#    sys.exit(1)
+#
+#print("✅ Instruct prompt generated successfully!")
+#
 # Step 3: Execute the main experiment
 print("Step 3: Starting main experiment...")
 experiment_success = do_idea(

@@ -17,7 +17,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
-data = "sensor_data.csv"
+data = "pect_ndt_full_dataset.npz"
 
 def run_code_with_error_fix(file_path, max_attempts=3):
 
@@ -88,18 +88,18 @@ Please fix the code so it runs successfully.
         print(f"❌ Aider fix failed: {str(e)}")
         return False
 import shutil
-def generate_instruct_prompt(data_info_path, data_info, idea):
+def generate_instruct_prompt(data_info_path, idea):
     os.makedirs("result", exist_ok=True)
     try:
         if os.path.exists(data_info_path):
-            result_data_path = os.path.join("result", "sensor_data.csv")
+            result_data_path = os.path.join("result", data)
             shutil.copy2(data_info_path, result_data_path)
             print(f"📁 Copied {data_info_path} to result folder")
         else:
             print(f"⚠️ Warning: {data_info_path} not found, cannot copy to result folder")
     except Exception as e:
         print(f"❌ Failed to copy {data_info_path}: {str(e)}")
-    base_prompt = coding_instruct_prompt(data_info_path, data_info, idea)
+    base_prompt = coding_instruct_prompt(data_info_path, idea)
     print("🔄 Generated instruction prompt")
     
     response = model.generate_content(base_prompt)

@@ -1,3 +1,6 @@
 __pycache__/
 .aider.tags.cache.v4/
 .env
+pect_ndt_full_dataset.npz
+coding-agent/
+analysis/
