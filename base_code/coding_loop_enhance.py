@@ -127,15 +127,14 @@ Please update the code to implement the requested changes while maintaining the 
 
 # Sửa function step2_generate_code trong file coding_loop_enhance.py:
 
-def step2_generate_code(data_file, idea_dict, output_dir="result"):
+def step2_generate_code( idea_dict, output_dir="result"):
     try:
         print(f"🔧 Step 2: Generating code from idea...")
-        print(f"Data file: {data_file}")
         print(f"Idea: {idea_dict.get('Name', 'Unknown')}")
         print(f"Output dir: {output_dir}")
 
         os.makedirs(output_dir, exist_ok=True)
-        base_prompt = coding_instruct_prompt(data_file, idea_dict)
+        base_prompt = coding_instruct_prompt(idea_dict)
         print("🔄 Generated instruction prompt")
         
         response = model.generate_content(base_prompt)

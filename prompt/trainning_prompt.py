@@ -1,8 +1,15 @@
-def coding_instruct_prompt(data_info_path, idea):
+import json
+def coding_instruct_prompt(idea):
+    try:
+        with open('analysis/results.json', 'r') as f:
+            analysis_results = json.load(f)
+    except FileNotFoundError:
+        print("analysis/results.json not found, running without dataset analysis")
+        analysis_results = {}
     return f"""
 **Instructions for Implementation LLM: Generate Machine Learning Pipeline Prompt**
 
-Your task is to analyze the dataset information located at `{data_info_path}`and the research idea: '{idea}'. Based on this analysis, generate a detailed, clear, and concise prompt that instructs another LLM (the instruct LLM) to write a high-quality Python script 
+Your task is to analyze the dataset information located at `{analysis_results}`and the research idea: '{idea}'. Based on this analysis, generate a detailed, clear, and concise prompt that instructs another LLM (the instruct LLM) to write a high-quality Python script 
 this is the required code you must to instruct llm to write when loading the dataset:
  ```python
  import numpy as np
