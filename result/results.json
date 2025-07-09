@@ -1,40 +1,15 @@
 {
-    "evaluation_metrics": {
-        "accuracy": 0.9836956521739131,
-        "precision": 0.8977310012367179,
-        "recall": 0.7658092266171881,
-        "f1_score": 0.8178622654087796,
-        "roc_auc": 0.9817716679317422
-    },
+    "model_architecture_description": "Random Forest Classifier for binary classification.",
     "hyperparameters": {
-        "epochs": 50,
-        "batch_size": 32,
-        "optimizer": "adam",
-        "loss_function": "binary_crossentropy",
-        "model_layers": [
-            {
-                "type": "InputLayer",
-                "units": 500
-            },
-            {
-                "type": "Dense",
-                "units": 64,
-                "activation": "relu"
-            },
-            {
-                "type": "Dense",
-                "units": 32,
-                "activation": "relu"
-            },
-            {
-                "type": "Dense",
-                "units": 1,
-                "activation": "sigmoid"
-            }
-        ],
-        "early_stopping_patience": 5,
-        "data_split_random_state": 42,
-        "tensorflow_seed": 42,
-        "numpy_seed": 42
+        "n_estimators": 100,
+        "max_depth": 10,
+        "random_seed": 42
+    },
+    "evaluation_metrics": {
+        "accuracy": 0.984083850931677,
+        "precision": 0.8529411764705882,
+        "recall": 0.5105633802816901,
+        "f1_score": 0.6387665198237885,
+        "roc_auc_score": 0.9562598394759776
     }
 }

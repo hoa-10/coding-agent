@@ -1,43 +1,55 @@
 {
     "dataset_info": {
         "X_train": {
-            "shape": [
+            "original_shape": [
                 15456,
                 500,
                 1
             ],
-            "dtype": "float64"
+            "dtype": "float64",
+            "processed_shape": [
+                15456,
+                500
+            ]
         },
         "y_train": {
-            "shape": [
+            "original_shape": [
                 15456
             ],
             "dtype": "int32"
         },
         "X_valid": {
-            "shape": [
+            "original_shape": [
                 10304,
                 500,
                 1
             ],
-            "dtype": "float64"
+            "dtype": "float64",
+            "processed_shape": [
+                10304,
+                500
+            ]
         },
         "y_valid": {
-            "shape": [
+            "original_shape": [
                 10304
             ],
             "dtype": "int32"
         },
         "X_scan": {
-            "shape": [
+            "original_shape": [
                 25761,
                 500,
                 1
             ],
-            "dtype": "float64"
+            "dtype": "float64",
+            "processed_shape": [
+                25761,
+                500
+            ]
         },
         "X_in_corr": {
-            "shape": [
+            "original_shape": [
                 161,
                 160,
                 500
@@ -45,74 +57,77 @@
             "dtype": "float64"
         },
         "Xc": {
-            "shape": [
+            "original_shape": [
                 711,
                 500
             ],
             "dtype": "float64"
         },
         "Xg": {
-            "shape": [
+            "original_shape": [
                 25049,
                 500
             ],
             "dtype": "float64"
         },
         "m": {
-            "shape": [
+            "original_shape": [
                 1,
                 500,
                 1
             ],
-            "dtype": "float64"
+            "dtype": "float64",
+            "processed_shape": [
+                1,
+                500
+            ]
         },
         "st": {
-            "shape": [
+            "original_shape": [
                 1,
                 500,
                 1
             ],
-            "dtype": "float64"
-        }
-    },
-    "label_distributions": {
-        "y_train": {
-            "counts": {
-                "0": 15029,
-                "1": 427
-            },
-            "total": 15456,
-            "percentage": {
-                "0": "97.24%",
-                "1": "2.76%"
-            }
+            "dtype": "float64",
+            "processed_shape": [
+                1,
+                500
+            ]
         },
-        "y_valid": {
-            "counts": {
-                "0": 10020,
-                "1": 284
+        "label_distributions": {
+            "y_train": {
+                "0": {
+                    "count": 15029,
+                    "percentage": 97.24,
+                    "meaning": "Good"
+                },
+                "1": {
+                    "count": 427,
+                    "percentage": 2.76,
+                    "meaning": "Defect"
+                }
             },
-            "total": 10304,
-            "percentage": {
-                "0": "97.24%",
-                "1": "2.76%"
+            "y_valid": {
+                "0": {
+                    "count": 10020,
+                    "percentage": 97.24,
+                    "meaning": "Good"
+                },
+                "1": {
+                    "count": 284,
+                    "percentage": 2.76,
+                    "meaning": "Defect"
+                }
             }
         }
     },
-    "global_signal_statistics": {
+    "extracted_feature_statistics": {
         "X_train": {
             "mean": 1.0792294594229251e-14,
             "std": 0.9999998900751302,
             "min": -7.056056911884795,
             "max": 7.280649669227083,
             "median": -0.025842401527920188
-        },
-        "X_scan": {
-            "mean": 0.0014492367025431413,
-            "std": 1.0004328115994363,
-            "min": -7.0660073514046795,
-            "max": 7.280649669227083,
-            "median": -0.025379125721112148
         },
         "Xc": {
             "mean": 0.08864829138949448,
@@ -127,62 +142,34 @@
             "min": -7.0660073514046795,
             "max": 7.280649669227083,
             "median": -0.029049972368833544
+        },
+        "X_scan": {
+            "mean": 0.0014492367025431413,
+            "std": 1.0004328115994363,
+            "min": -7.0660073514046795,
+            "max": 7.280649669227083,
+            "median": -0.025379125721112148
         }
     },
-    "preprocessing_info": {
-        "normalization_mean_shape": [
-            1,
-            500,
-            1
-        ],
-        "normalization_mean_sample": [
-            -0.7433822213230057,
-            -0.7519376250400216,
-            -0.753648132752122,
-            -0.7552037014767782,
-            -0.7566605263062575,
-            "...",
-            -0.7360121531086897,
-            -0.7393838403047048,
-            -0.7424398252470865,
-            -0.7451683530063311,
-            -0.7476368105698711
-        ],
-        "normalization_std_shape": [
-            1,
-            500,
-            1
-        ],
-        "normalization_std_sample": [
-            0.006309938449197285,
-            0.006334069626309095,
-            0.006327759009527499,
-            0.0063727489446042535,
-            0.006313032917567672,
-            "...",
-            0.006255190126724827,
-            0.006334819264467224,
-            0.006320831687810404,
-            0.0063516638912508635,
-            0.0063847962890038355
-        ],
-        "description": "The 'm' and 'st' arrays are provided for z-score normalization (standardization) of the signals. Each array contains 500 values, corresponding to the mean and standard deviation for each of the 500 time points across a reference dataset (e.g., the entire training set or a large good-signal population). Signals should be normalized as `X_normalized = (X - m) / st`. Their shape (1, 500, 1) is designed for convenient broadcasting when applied to signal arrays of shape (N, 500, 1)."
-    },
-    "summary_and_recommendations": {
+    "preprocessing_steps": "The dataset includes 'm' (mean) and 'st' (standard deviation) arrays, which are typically used for Z-score normalization. This normalization, following the formula `normalized_signal = (raw_signal - m) / st`, is crucial for standardizing input data for machine learning models and should be applied consistently across training, validation, and inference.",
+    "summary_findings_recommendations": {
         "findings": [
-            "**Class Imbalance**: Significant class imbalance detected in training data. Good samples: 15029 (97.24%), Defect samples: 427 (2.76%). The ratio of Good to Defect samples is approximately 35.20:1.",
-            "**Signal Characteristics**: The 'Average PECT Signal: Good vs. Defect' plots clearly show distinct differences between signal waveforms from good and defective regions.Specifically, defect signals tend to exhibit:  - A notably lower peak amplitude compared to good signals.  - A delayed time-to-peak or a broader peak.  - A slower decay rate, especially observed in the latter half of the signal (after the main peak).  - Potential shifts in the overall baseline or a prolonged recovery time."
+            "Significant class imbalance detected: Training set has 2.76% defect samples, validation set has 2.76% defect samples. The 'Defect' class (label 1) is considerably underrepresented.",
+            "The 'Average PECT Signals: Good vs. Defect' plot reveals clear characteristic differences:",
+            "- **Initial Peak Amplitude:** Defect signals (Xc) tend to have a noticeably lower peak amplitude compared to good signals (Xg) at early time points.",
+            "- **Decay Rate:** Defect signals exhibit a faster decay, dropping to lower voltage values more quickly than good signals.",
+            "- **Overall Waveform Shape:** The entire waveform of defect signals appears 'damped' or 'compressed' vertically compared to good signals, indicating a weaker or altered electromagnetic response.",
+            "The `X_in_corr` array, structured as a 2D spatial grid (rows x columns x time_points), is exceptionally valuable for visualizing the spatial extent and location of defects. It allows mapping derived signal features (e.g., average amplitude, defect classification scores) back to a physical image of the inspected surface."
         ],
         "recommendations": [
-            "**Normalization**: It is highly recommended to normalize (standardize) the input signals using the provided 'm' and 'st' arrays. This operation `(X - m) / st` should be applied consistently to X_train, X_valid, and X_scan. Normalization helps stabilize model training and improves performance for most machine learning algorithms.",
-            "**Address Class Imbalance**: Given the detected class imbalance, consider strategies such as:   - **Resampling**: Oversampling the minority class (e.g., using SMOTE or simple duplication) or undersampling the majority class.   - **Weighted Loss Functions**: Using a loss function that penalizes misclassifications of the minority class more heavily.   - **Ensemble Methods**: Bagging or boosting techniques designed for imbalanced datasets.",
-            "**Feature Engineering/Model Choice**:   - The distinct waveform differences suggest that features like peak amplitude, time-to-peak, decay characteristics, and area under the curve would be highly discriminative.   - Deep learning models (e.g., 1D Convolutional Neural Networks (CNNs) or Recurrent Neural Networks (RNNs) like LSTMs) are well-suited for learning these complex temporal features directly from the raw signals without explicit feature engineering.   - Frequency domain analysis (e.g., using Fast Fourier Transform) could also reveal discriminative features related to signal damping or resonance shifts.",
-            "**Validation Strategy**: Utilize the provided X_valid and y_valid sets for objective model performance evaluation and hyperparameter tuning to avoid overfitting to the training data.",
-            "**Spatial Context**: While not directly used in classification, the X_in_corr array provides spatial context. If the goal is defect localization or mapping, consider integrating this spatial information into a downstream task (e.g., by treating signal features as image pixels for a 2D CNN)."
+            "To address the class imbalance, consider using techniques such as: class weighting in loss functions (e.g., `class_weight` in TensorFlow/Keras, `weight` parameter in PyTorch's `CrossEntropyLoss`), oversampling the minority class (e.g., SMOTE), or undersampling the majority class. Evaluate models using metrics robust to imbalance like F1-score, Precision, Recall, or AUC-ROC instead of just accuracy.",
+            "The distinct differences in signal shape (amplitude, decay rate) between good and defect regions suggest that these features are highly discriminative. Models capable of learning temporal patterns, such as Convolutional Neural Networks (CNNs) or Recurrent Neural Networks (RNNs) for time-series classification, would be well-suited. Feature engineering based on these observed characteristics (e.g., peak amplitude, time-to-peak, integrated signal strength, decay coefficients) could also be highly effective for simpler models.",
+            "Normalization using the provided 'm' (mean) and 'st' (standard deviation) arrays is strongly recommended as a preprocessing step. This will scale the input features consistently, which is crucial for the stability and performance of most machine learning algorithms, especially neural networks. Apply `(signal - m) / st` to `X_train`, `X_valid`, and `X_scan`.",
+            "For post-processing and reporting, consider projecting features or model predictions from `X_in_corr` onto a 2D map to visualize defect regions on the scanned surface. This is critical for practical NDT applications."
         ]
     },
     "plot_paths": [
-        "analysis/figures/signal_comparison_mean_median.png",
-        "analysis/figures/example_signals.png"
+        "analysis\\figures\\average_signals_good_vs_defect.png",
+        "analysis\\figures\\example_signals_good_vs_defect.png"
     ]
 }

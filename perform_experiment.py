@@ -11,23 +11,25 @@ import time
 # Set encoding globally
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
-MAX_ITERS = 4
-MAX_RUNS = 5
+MAX_ITERS = 6
+MAX_RUNS = 2
 MAX_STDERR_OUTPUT = 1500
 
-coder_prompt = """Your task is to implement the following idea: {title}
+coder_prompt = """
+Your task is to implement the following idea: {title}
 
 Proposed Experiment: {idea}
 
 Available Runs: Up to {max_runs} (you do not need to use all).
-
+###requirment:
+you need to load dataset with path : data_path = r'C:\\Users\\user\\Desktop\\coding-agent\\pect_ndt_full_dataset.npz'
 Instructions:
 Propose Experiments:
 Based on the idea and baseline results, propose and justify a sequence of experiments with specific parameter settings.
 you incapable to plan for all of process, you just need plan for first experiment., each result after should be analyzed by you to adjust other best approach for suitable
 Implement in experiment.py:
 Modify the provided experiment.py to include your list of parameter settings.
-Parse --out_dir=run_i to select the i-th experiment’s settings.
+Parse --out_dir=run_i to select the i-th experiment's settings.
 Save results to final_info.json in out_dir for each run.
 Important:
 Do not re-run the baseline; use provided results.
@@ -39,7 +41,6 @@ IMPORTANT: You must modify the experiment.py file to implement your changes. The
 You can then implement the next thing on your list.
 
 PLEASE MAKE SURE TO ACTUALLY MODIFY THE EXPERIMENT.PY FILE WITH YOUR CHANGES. DO NOT JUST DESCRIBE WHAT TO DO."""
-
 
 def ensure_result_file_exists(folder_name, run_num):
     """Create a dummy result file if experiment didn't create one"""
@@ -223,7 +224,7 @@ def read_file_content(filepath):
 
 # PERFORM EXPERIMENTS
 # Modify the plotting phase in perform_experiments function
-def perform_experiments(idea, folder_name, coder, baseline_results) -> bool:
+def perform_experiments(idea, folder_name, coder, baseline_results, gui_mode=False, plot_feedback_callback=None) -> bool:
     current_iter = 0
     run = 1
     next_prompt = coder_prompt.format(
@@ -326,9 +327,8 @@ If you need to make major changes, you can rewrite the entire file using the 'wh
         print("Not all experiments completed due to max iterations.")
         return False
 
-    print("Starting plotting phase with user feedback...")
+    print("Starting plotting phase...")
     
-
     initial_plot_prompt = """
 Great job! Please modify `plot.py` to generate the most relevant plots for the final writeup. 
 In particular, be sure to fill in the "labels" dictionary with the correct names for each run that you want to plot.
@@ -346,18 +346,18 @@ We will be running the command `python plot.py` to generate the plots.
     try:
         coder.run(initial_plot_prompt)
         
-        while True:
-            print("\n" + "="*60)
-            print("📊 PLOTTING PHASE")
-            print("="*60)
+        # Generate initial plots
+        print("\n" + "="*60)
+        print("📊 GENERATING INITIAL PLOTS")
+        print("="*60)
+        
+        return_code, error_msg = run_plotting(folder_name)
+        
+        if return_code != 0:
+            print(f"❌ Initial plotting failed: {error_msg}")
+            print("🔧 Trying to fix plotting errors...")
             
-            return_code, error_msg = run_plotting(folder_name)
-            
-            if return_code != 0:
-                print(f"❌ Plotting failed: {error_msg}")
-                print("🔧 Trying to fix plotting errors...")
-                
-                fix_prompt = f"""
+            fix_prompt = f"""
 Plotting failed with error: {error_msg}
 Please fix the plot.py file to resolve this error.
 Make sure to check:
@@ -366,17 +366,27 @@ Make sure to check:
 - Plot syntax is correct
 - Output directory is accessible
 """
-                try:
-                    coder.run(fix_prompt)
-                    continue  
-                except Exception as e:
-                    print(f"Failed to fix plotting error: {e}")
-                    break
+            try:
+                coder.run(fix_prompt)
+                return_code, error_msg = run_plotting(folder_name)
+                
+                if return_code != 0:
+                    print(f"❌ Still failed after fix attempt: {error_msg}")
+                    return False
+                    
+            except Exception as e:
+                print(f"Failed to fix plotting error: {e}")
+                return False
+        
+        print("✅ Initial plots generated successfully!")
+        print(f"📁 Plots available in folder: {folder_name}")
+        
+        # If GUI mode, return True and let GUI handle plot feedback
+        if gui_mode:
+            return True
             
-            print("✅ Plots generated successfully!")
-            print(f"📁 Check plots in folder: {folder_name}")
-            print("\nPlease review the generated plots in the folder.")
-
+        # Terminal mode: Continue with input() as before
+        while True:
             print("\n" + "="*50)
             print("👤 USER FEEDBACK")
             print("="*50)
@@ -418,6 +428,16 @@ ACTUALLY MODIFY THE PLOT.PY FILE - don't just describe what to do.
                 coder.run(feedback_prompt)
                 print("✅ Feedback applied, regenerating plots...")
                 
+                return_code, error_msg = run_plotting(folder_name)
+                
+                if return_code != 0:
+                    print(f"❌ Plot regeneration failed: {error_msg}")
+                    retry = input("❓ Would you like to try again? (yes/no): ")
+                    if retry.lower() != "yes":
+                        break
+                else:
+                    print("✅ Plots regenerated successfully!")
+                    
             except Exception as e:
                 print(f"❌ Error applying feedback: {e}")
                 retry = input("❓ Would you like to try again? (yes/no): ")
@@ -439,3 +459,48 @@ Somebody else will be using `notes.txt` to write a report on this in the future.
         print(f"Notes phase error: {e}")
 
     return True
+
+def apply_plot_feedback(folder_name, coder, feedback):
+    try:
+        print(f"📝 Applying plot feedback: {feedback}")
+        
+        feedback_prompt = f"""
+The user has reviewed the generated plots and provided this feedback:
+
+USER FEEDBACK:
+{feedback}
+
+Please modify the plot.py file to address this feedback. Consider:
+- Changing colors, styles, or plot types
+- Modifying titles, labels, legends
+- Adding or removing plot elements
+- Improving readability and visual appeal
+- Making data comparisons clearer
+- Adding statistical information if needed
+- Changing figure sizes or layouts
+
+Make sure the modified plot.py still:
+- Reads the results from all run directories
+- Generates meaningful visualizations
+- Saves plots with appropriate filenames
+- Works with the existing data structure
+
+ACTUALLY MODIFY THE PLOT.PY FILE - don't just describe what to do.
+"""
+        
+        coder.run(feedback_prompt)
+        print("✅ Plot feedback applied, regenerating plots...")
+
+        return_code, error_msg = run_plotting(folder_name)
+        
+        if return_code == 0:
+            print("✅ Plots regenerated successfully!")
+            return True
+        else:
+            print(f"❌ Plot regeneration failed: {error_msg}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error applying plot feedback: {e}")
+        return False
+

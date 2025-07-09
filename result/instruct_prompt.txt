@@ -1,80 +1,74 @@
-```
-Generate a Python script named `run_pipeline.py` that implements a deep learning pipeline for NDT-Sensor Anomaly Detection. The script must classify between two classes: Anomaly (0) and Normal (1) using the provided dataset. It should include data loading, preprocessing, model definition, training, evaluation, and result saving.
+**Prompt for Instruct LLM:**
 
-**Dataset Information:**
-The dataset is located at `pect_ndt_full_dataset.npz`. You *must* use the following exact code snippet to load the data:
-```python
-import numpy as np
-import os
-import sys
+You are an expert Python programmer specializing in machine learning and deep learning. Your task is to write a high-quality Python script named `run_pipeline.py` that implements an advanced deep learning pipeline for Non-Destructive Testing (NDT) signal analysis. The objective is to perform anomaly detection and predictive modeling on the provided NDT data, encompassing data preprocessing, deep learning model training, comprehensive evaluation, and result visualization.
 
-# Check if the dataset file exists
-dataset_path = 'pect_ndt_full_dataset.npz'
-if not os.path.exists(dataset_path):
-    print(f"Error: Dataset file not found at {dataset_path}")
-    sys.exit(1)
+The script must adhere to the following strict requirements:
 
-data = np.load(dataset_path)
-X_train = data['X_train']
-y_train = data['y_train']
-X_valid = data['X_valid']
-y_valid = data['y_valid']
-X_scan = data['X_scan']
-X_in_corr = data['X_in_corr']
-Xc = data['Xc']
-Xg = data['Xg']
-m = data['m']
-st = data['st']
-```
+1.  **Reproducibility**: Set a global random seed (e.g., `42`) for NumPy and TensorFlow/Keras operations to ensure reproducible results. Do not generate any random, synthetic, or dummy data; work exclusively with the actual data loaded from the specified file.
 
-**Pipeline Steps:**
+2.  **Dataset Loading**:
+    *   Load the dataset from the file path: `pect_ndt_full_dataset.npz`.
+    *   The file contains the following arrays: `X_train`, `y_train`, `X_valid`, `y_valid`, `X_scan`, `X_in_corr`, `Xc`, `Xg`, `m`, `st`.
+    *   Use the exact provided Python code for data loading:
+        ```python
+        import numpy as np
 
-1.  **Data Preparation and Splitting:**
-    *   Combine `X_train` and `X_valid` into a single feature array (`X_combined`).
-    *   Combine `y_train` and `y_valid` into a single target array (`y_combined`).
-    *   Perform a stratified split of `X_combined` and `y_combined` into training, validation, and test sets with an 80% train, 10% validation, and 10% test ratio. Use `random_state=42` for reproducibility.
-    *   Apply `StandardScaler` to the features. The scaler must be fitted *only* on the training data (`X_train_scaled`) and then used to transform `X_train_scaled`, `X_val_scaled`, and `X_test_scaled`.
+        data = np.load('pect_ndt_full_dataset.npz')
+        X_train = data['X_train']
+        y_train = data['y_train']
+        X_valid = data['X_valid']
+        y_valid = data['y_valid']
+        X_scan = data['X_scan']
+        X_in_corr = data['X_in_corr']
+        Xc = data['Xc']
+        Xg = data['Xg']
+        m = data['m']
+        st = data['st']
+        ```
+    *   Implement robust error handling: If the file `pect_ndt_full_dataset.npz` is not found, print the error message "Error: Dataset file 'pect_ndt_full_dataset.npz' not found. Please ensure the file is in the correct directory." to the console and then terminate the script gracefully (e.g., using `sys.exit(1)`).
 
-2.  **Model Configuration:**
-    *   Define a deep learning model using TensorFlow/Keras.
-    *   The model should be a Sequential API with the following structure:
-        *   An `InputLayer` matching the number of features of the scaled training data.
-        *   At least two `Dense` hidden layers with 'relu' activation (e.g., 64 and 32 units).
-        *   A `Dense` output layer with 1 unit and 'sigmoid' activation for binary classification.
-    *   Compile the model with the 'adam' optimizer and 'binary_crossentropy' loss.
-    *   Set `tf.random.set_seed(42)` and `np.random.seed(42)` at the beginning of the script for full reproducibility.
+3.  **Data Preprocessing**:
+    *   **Feature Scaling**: Apply `StandardScaler` from `sklearn.preprocessing` to the `X_train` and `X_valid` datasets. The scaler must be `fit` *only* on `X_train` and then used to `transform` both `X_train` and `X_valid`.
+    *   **Label Preparation**: Ensure that `y_train` and `y_valid` are in the appropriate numerical format (e.g., integers `0` or `1`) suitable for binary classification.
 
-3.  **Training Process:**
-    *   Train the model using the training data (`X_train_scaled`, `y_train`).
-    *   Use the validation data (`X_val_scaled`, `y_val`) during training (via the `validation_data` argument in `model.fit`).
-    *   Train for a reasonable number of epochs (e.g., 50).
-    *   Implement `EarlyStopping` (from `keras.callbacks`) to monitor validation loss with a patience of 5 epochs to prevent overfitting.
+4.  **Model Configuration (Deep Learning)**:
+    *   Construct a deep learning model using `tensorflow.keras.models.Sequential`.
+    *   The model should be designed for binary classification, inferring the input shape from the preprocessed `X_train`.
+    *   **Recommended Architecture**:
+        *   An `InputLayer` that matches the number of features in `X_train_scaled` (i.e., `X_train_scaled.shape[1]`).
+        *   At least two `Dense` hidden layers with `relu` activation (e.g., 64 units, 32 units).
+        *   A final `Dense` output layer with `1` unit and `sigmoid` activation for binary classification.
+    *   Compile the model using the `adam` optimizer (with a learning rate of `0.001`), `binary_crossentropy` as the loss function, and `accuracy` as a metric.
 
-4.  **Evaluation:**
-    *   Evaluate the trained model on the `test` set (`X_test_scaled`, `y_test`).
-    *   Calculate and print the following metrics:
-        *   Accuracy
-        *   Precision (macro average)
-        *   Recall (macro average)
-        *   F1-score (macro average)
-        *   ROC AUC score (for positive class prediction probabilities)
-    *   Ensure all metrics are imported from `sklearn.metrics`.
+5.  **Training Process**:
+    *   Train the configured deep learning model using the preprocessed `X_train_scaled` and `y_train`.
+    *   Utilize `X_valid_scaled` and `y_valid` as the validation set during training to monitor performance.
+    *   Set the training parameters: `epochs` to `30` and `batch_size` to `32`.
 
-5.  **Save Results:**
-    *   Create a directory named `result` in the current working directory if it does not already exist.
-    *   Save a JSON file named `results.json` inside the `result` directory.
-    *   This JSON file must contain:
-        *   All computed evaluation metrics (accuracy, precision, recall, f1-score, roc_auc).
-        *   The hyperparameters used for the model (e.g., number of epochs, batch size, optimizer, layer units, activation functions, `random_state`).
+6.  **Evaluation**:
+    *   After the training completes, evaluate the model's performance on the `X_valid_scaled` dataset (which serves as the final test set for this pipeline).
+    *   Compute and display the following standard classification metrics from `sklearn.metrics`:
+        *   Accuracy Score
+        *   Precision Score
+        *   Recall Score
+        *   F1 Score
+        *   ROC AUC Score (using predicted probabilities)
+    *   Print these evaluation metrics clearly to the console.
 
-**Important Requirements and Constraints:**
+7.  **Visualization**:
+    *   Generate a plot that displays the training and validation loss curves over epochs.
+    *   On the same plot, also display the training and validation accuracy curves over epochs.
+    *   Save this plot as `training_history.png` within the designated `result` directory.
 
-*   **No Dummy Data:** Do NOT generate any dummy, fake, or random data. Work only with the actual data loaded from `pect_ndt_full_dataset.npz`.
-*   **Reproducibility:** Ensure the entire pipeline is reproducible by setting `random_state` for data splitting and seeds for TensorFlow/NumPy.
-*   **Library Restriction:** Limit library usage to commonly available and easily installable ones (e.g., `numpy`, `sklearn`, `tensorflow`/`keras`, `json`, `os`, `sys`). Avoid rare or hard-to-install packages.
-*   **Script Name:** The generated script must be named `run_pipeline.py`.
-*   **Code Clarity:** The generated Python script should be clear, concise, and modular. Do not include any comments or extraneous notes within the *generated Python code itself*.
+8.  **Save Results**:
+    *   Create a directory named `result` in the current working directory if it does not already exist (use `os.makedirs`).
+    *   Save all computed evaluation metrics and the model's hyperparameters into a JSON file named `results.json` inside the `result` directory.
+    *   The `results.json` file must contain:
+        *   All numerical evaluation metrics (accuracy, precision, recall, f1, roc_auc).
+        *   Key hyperparameters used for training and the model (e.g., `epochs`, `batch_size`, `learning_rate`, `random_seed`).
+        *   A brief string describing the model architecture (e.g., "Sequential Multi-Layer Perceptron for binary classification").
 
-```python
-# The instruct LLM will fill this section with the generated Python script.
-```
+9.  **Code Structure and Libraries**:
+    *   The Python script should be modular, well-structured, and easy to read.
+    *   Do NOT include any notes or comments within the generated Python source code.
+    *   Limit the usage of external libraries to commonly used ones for machine learning, such as `numpy`, `sklearn`, `tensorflow`, `matplotlib`, `json`, `os`, and `sys`. Avoid obscure or rarely installed libraries.
