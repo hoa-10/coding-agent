@@ -35,7 +35,7 @@ idea = json.load(open("idea.json", encoding="utf-8"))
 
 class AIResearchAssistant:
     def __init__(self):
-        self.data_file = r'C:\Users\user\Desktop\coding-agent\pect_ndt_full_dataset.npz'
+        self.data_file = r'C:\Users\Admin\Desktop\coding-agent\pect_ndt_full_dataset.npz'
         self.results_dir = "coding-agent"
         self.current_idea = None
         self.current_code = ""
