@@ -4,245 +4,259 @@ import json
 import os
 
 # --- 1. Load the dataset ---
-dataset_path = 'pect_ndt_full_dataset.npz'
+print("Loading dataset...")
 try:
-    data = np.load(dataset_path)
+    data = np.load('pect_ndt_full_dataset.npz')
     X_train = data['X_train']
     y_train = data['y_train']
     X_valid = data['X_valid']
     y_valid = data['y_valid']
     X_scan = data['X_scan']
     X_in_corr = data['X_in_corr']
-    Xc = data['Xc']  # Defect signals
-    Xg = data['Xg']  # Good signals
-    m = data['m']    # Mean for normalization
-    st = data['st']  # Standard deviation for normalization
-    print(f"Dataset '{dataset_path}' loaded successfully.")
+    Xc = data['Xc']
+    Xg = data['Xg']
+    m = data['m']
+    st = data['st']
+    print("Dataset loaded successfully.")
 except FileNotFoundError:
-    print(f"Error: Dataset file '{dataset_path}' not found.")
+    print("Error: 'pect_ndt_full_dataset.npz' not found.")
     print("Please ensure the dataset file is in the same directory as the script.")
     exit()
 
-# Create analysis directories if they don't exist
+# Prepare a dictionary to store array information for easy processing
+array_info_list = [
+    {"name": "X_train", "array": X_train, "description": "Training signals"},
+    {"name": "y_train", "array": y_train, "description": "Training labels (0=good, 1=defect)"},
+    {"name": "X_valid", "array": X_valid, "description": "Validation signals"},
+    {"name": "y_valid", "array": y_valid, "description": "Validation labels (0=good, 1=defect)"},
+    {"name": "X_scan", "array": X_scan, "description": "Complete set of measured signals from the entire scan area"},
+    {"name": "X_in_corr", "array": X_in_corr, "description": "Signals inside corrosion regions (2D spatial grid)"},
+    {"name": "Xc", "array": Xc, "description": "All signals identified as coming from defective areas"},
+    {"name": "Xg", "array": Xg, "description": "All signals from normal (good) regions"},
+    {"name": "m", "array": m, "description": "Mean values for normalization"},
+    {"name": "st", "array": st, "description": "Standard deviation values for normalization"}
+]
+
+# Print shapes and types of each array
+print("\n--- Array Information (Shape & Type) ---")
+for item in array_info_list:
+    arr = item['array']
+    print(f"{item['name']}: Shape {arr.shape}, Dtype {arr.dtype}, Description: {item['description']}")
+
+# Create output directories
 output_dir = 'analysis'
 figures_dir = os.path.join(output_dir, 'figures')
+os.makedirs(output_dir, exist_ok=True)
 os.makedirs(figures_dir, exist_ok=True)
-
-# Dictionary to store all analysis results
-results = {}
-
-print("\n--- Dataset Array Information ---")
-array_info = {}
-for name, arr in data.items():
-    # Convert numpy array attributes to standard Python types for JSON serialization
-    array_info[name] = {
-        "shape": list(arr.shape),
-        "dtype": str(arr.dtype)
-    }
-    print(f"Array: {name}, Shape: {array_info[name]['shape']}, Type: {array_info[name]['dtype']}")
-
-# Add detailed descriptions for each array
-array_descriptions = {
-    "X_train": "Training signals, shape (15456, 500, 1). Each signal is a 1D array of 500 time points representing voltage response.",
-    "y_train": "Training labels, shape (15456,). 0 = good (non-defect), 1 = defect.",
-    "X_valid": "Validation signals, shape (10304, 500, 1). Used for model validation.",
-    "y_valid": "Validation labels, shape (10304,). Corresponds to X_valid signals.",
-    "X_scan": "The complete set of measured signals from the entire scan area, shape (25761, 500, 1).",
-    "X_in_corr": "Signals inside corrosion regions, structured as a 2D spatial grid (161 rows × 160 columns), each cell contains a 500-point signal. Useful for spatial visualization.",
-    "Xc": "All signals explicitly identified as coming from defective areas, shape (711, 500).",
-    "Xg": "All signals explicitly identified as coming from normal (good/non-defect) regions, shape (25049, 500).",
-    "m": "Mean values for normalization, shape (1, 500, 1). Used to standardize signals by subtracting the mean.",
-    "st": "Standard deviation values for normalization, shape (1, 500, 1). Used to standardize signals by dividing by the standard deviation."
-}
-
-for name, desc in array_descriptions.items():
-    if name in array_info:
-        array_info[name]["description"] = desc
-results["dataset_info"] = array_info
+print(f"\nCreated output directories: {output_dir} and {figures_dir}")
 
 # --- 2. Create a signal comparison visualization ---
+print("\n--- Generating Signal Comparison Plot ---")
 
-# Select ONE representative sample from good signals (from Xg array)
-# Xg signals are (N, 500), so Xg[0, :] gets the first signal directly.
-good_signal = Xg[0, :]
-# Select ONE representative sample from defect signals (from Xc array)
-# Xc signals are (N, 500), so Xc[0, :] gets the first signal directly.
-defect_signal = Xc[0, :]
+# Select representative samples:
+# For simplicity and clear representation as per instructions, we select the first sample
+# from the 'good' signals (Xg) and 'defect' signals (Xc).
+# Xg and Xc are already in (N, 500) shape, so no squeezing is needed for plotting.
+if Xg.shape[0] > 0 and Xc.shape[0] > 0:
+    good_signal = Xg[0]
+    defect_signal = Xc[0]
 
-# Time points for plotting (assuming 500 time points per signal)
-time_points = np.arange(good_signal.shape[0])
+    # Time points for plotting (assuming 500 time points for each signal)
+    time_points = np.arange(good_signal.shape[0])
 
-plt.figure(figsize=(12, 6))
-plt.plot(time_points, good_signal, color='blue', label='Good Signal (No Defect)')
-plt.plot(time_points, defect_signal, color='red', label='Defect Signal (Corrosion)')
-plt.title('Comparison of PECT Signals: Good vs. Defect Region', fontsize=16)
-plt.xlabel('Time Points', fontsize=12)
-plt.ylabel('Amplitude', fontsize=12)
-plt.legend(fontsize=10)
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.tight_layout() # Adjust layout to prevent labels from overlapping
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_points, good_signal, color='blue', label='Good Signal (Sample from Xg)', linewidth=1.5)
+    plt.plot(time_points, defect_signal, color='red', label='Defect Signal (Sample from Xc)', linewidth=1.5)
+    plt.title('Comparison of PECT Signals: Good vs. Defect', fontsize=16)
+    plt.xlabel('Time Points', fontsize=12)
+    plt.ylabel('Amplitude (Voltage Response)', fontsize=12)
+    plt.legend(fontsize=10)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
 
-signal_comparison_plot_filename = 'signal_comparison.png'
-signal_comparison_plot_path = os.path.join(figures_dir, signal_comparison_plot_filename)
-plt.savefig(signal_comparison_plot_path)
-plt.close() # Close the plot to free memory
-print(f"\nSignal comparison plot saved to: {signal_comparison_plot_path}")
-results["signal_comparison_plot_path"] = signal_comparison_plot_path
+    plot_path = os.path.join(figures_dir, 'signal_comparison.png')
+    plt.savefig(plot_path, dpi=300) # Save with high resolution
+    plt.close()
+    print(f"Signal comparison plot saved to {plot_path}")
+else:
+    print("Warning: Xg or Xc arrays are empty. Cannot generate signal comparison plot.")
+    plot_path = "N/A (Xg or Xc empty)"
 
-# --- 3. Calculate and save comprehensive statistics ---
 
-# Label Distribution
-print("\n--- Label Distribution ---")
+# --- 3. Calculates and saves comprehensive statistics ---
+print("\n--- Calculating Comprehensive Statistics ---")
+results = {}
+
+# 3.1. Dataset information: shapes, types, and array descriptions
+dataset_info_dict = {}
+for item in array_info_list:
+    arr = item['array']
+    dataset_info_dict[item['name']] = {
+        "shape": str(arr.shape),  # Convert tuple to string for JSON serialization
+        "dtype": str(arr.dtype),
+        "description": item['description']
+    }
+results["dataset_info"] = dataset_info_dict
+
+# 3.2. Label distribution for training and validation sets
 label_distribution = {}
 
+# y_train
 unique_train, counts_train = np.unique(y_train, return_counts=True)
-train_labels_map = dict(zip(unique_train, counts_train))
+train_label_map = dict(zip(unique_train, counts_train))
+total_train = len(y_train)
 label_distribution["y_train"] = {
-    "Good (0)": int(train_labels_map.get(0, 0)),
-    "Defect (1)": int(train_labels_map.get(1, 0)),
-    "Total": int(len(y_train))
+    "good_count": int(train_label_map.get(0, 0)),
+    "defect_count": int(train_label_map.get(1, 0)),
+    "total": int(total_train),
+    "good_ratio": float(train_label_map.get(0, 0) / total_train) if total_train > 0 else 0.0,
+    "defect_ratio": float(train_label_map.get(1, 0) / total_train) if total_train > 0 else 0.0
 }
-print(f"y_train: {label_distribution['y_train']}")
 
+# y_valid
 unique_valid, counts_valid = np.unique(y_valid, return_counts=True)
-valid_labels_map = dict(zip(unique_valid, counts_valid))
+valid_label_map = dict(zip(unique_valid, counts_valid))
+total_valid = len(y_valid)
 label_distribution["y_valid"] = {
-    "Good (0)": int(valid_labels_map.get(0, 0)),
-    "Defect (1)": int(valid_labels_map.get(1, 0)),
-    "Total": int(len(y_valid))
+    "good_count": int(valid_label_map.get(0, 0)),
+    "defect_count": int(valid_label_map.get(1, 0)),
+    "total": int(total_valid),
+    "good_ratio": float(valid_label_map.get(0, 0) / total_valid) if total_valid > 0 else 0.0,
+    "defect_ratio": float(valid_label_map.get(1, 0) / total_valid) if total_valid > 0 else 0.0
 }
-print(f"y_valid: {label_distribution['y_valid']}")
-
 results["label_distribution"] = label_distribution
 
-# Statistical analysis for signal arrays
-print("\n--- Statistical Analysis for Signal Arrays ---")
-signal_statistics = {}
+# 3.3. Statistical analysis for signal arrays
+array_statistics = {}
 
-# Helper function to get detailed statistics for an array of signals
-def get_signal_array_stats(arr, name):
-    # If the array has shape (N, 500, 1), squeeze the last dimension to (N, 500)
+signal_arrays_for_stats = {
+    "X_train": X_train,
+    "X_valid": X_valid,
+    "X_scan": X_scan,
+    "Xc": Xc,
+    "Xg": Xg,
+    "X_in_corr": X_in_corr # This will be flattened for signal-wise stats
+}
+
+for name, arr in signal_arrays_for_stats.items():
+    # Process array to (N_signals, 500) shape for consistent statistics
     if arr.ndim == 3 and arr.shape[2] == 1:
-        arr_processed = arr.squeeze(axis=2)
-    else:
-        arr_processed = arr
+        processed_arr = arr.squeeze(axis=-1) # (N, 500, 1) -> (N, 500)
+    elif arr.ndim == 3 and arr.shape[2] != 1: # X_in_corr (161, 160, 500) -> (161*160, 500)
+        processed_arr = arr.reshape(-1, arr.shape[-1])
+    else: # Xc, Xg, which are already (N, 500)
+        processed_arr = arr
 
-    stats = {
-        "total_signals": int(arr_processed.shape[0]),
-        "time_points_per_signal": int(arr_processed.shape[1])
+    if processed_arr.size == 0 or processed_arr.shape[0] == 0:
+        array_statistics[name] = {"message": "Array is empty or has no signals, no statistics."}
+        continue
+
+    # Global statistics (across all elements in the array)
+    global_stats = {
+        "mean": float(np.mean(processed_arr)),
+        "std": float(np.std(processed_arr)),
+        "min": float(np.min(processed_arr)),
+        "max": float(np.max(processed_arr)),
+        "median": float(np.median(processed_arr))
     }
 
-    # Global statistics (across all signals and all time points in the array)
-    stats["global_mean"] = float(np.mean(arr_processed))
-    stats["global_std"] = float(np.std(arr_processed))
-    stats["global_min"] = float(np.min(arr_processed))
-    stats["global_max"] = float(np.max(arr_processed))
-    stats["global_median"] = float(np.median(arr_processed))
+    # Per-signal statistics (calculated for each 500-point signal, then aggregated)
+    per_signal_peak_amplitude = np.max(processed_arr, axis=1)
+    per_signal_min_amplitude = np.min(processed_arr, axis=1)
+    per_signal_signal_range = per_signal_peak_amplitude - per_signal_min_amplitude
+    per_signal_std_amplitude = np.std(processed_arr, axis=1)
 
-    # Per-signal characteristics
-    # Peak amplitude for each signal
-    peak_values = np.max(arr_processed, axis=1)
-    stats["mean_peak_amplitude"] = float(np.mean(peak_values))
-    stats["std_peak_amplitude"] = float(np.std(peak_values))
-    stats["min_peak_amplitude"] = float(np.min(peak_values))
-    stats["max_peak_amplitude"] = float(np.max(peak_values))
+    per_signal_average = {
+        "peak_amplitude": float(np.mean(per_signal_peak_amplitude)),
+        "min_amplitude": float(np.mean(per_signal_min_amplitude)),
+        "signal_range": float(np.mean(per_signal_signal_range)),
+        "std_amplitude": float(np.mean(per_signal_std_amplitude))
+    }
 
-    # Signal range (max - min) for each signal
-    signal_ranges = np.max(arr_processed, axis=1) - np.min(arr_processed, axis=1)
-    stats["mean_signal_range"] = float(np.mean(signal_ranges))
-    stats["std_signal_range"] = float(np.std(signal_ranges))
-    stats["min_signal_range"] = float(np.min(signal_ranges))
-    stats["max_signal_range"] = float(np.max(signal_ranges))
-    
-    # Time point at which peak amplitude occurs for each signal
-    # np.argmax returns the index of the first occurrence of the maximum value
-    peak_time_points = np.argmax(arr_processed, axis=1)
-    stats["mean_peak_time_point"] = float(np.mean(peak_time_points))
-    stats["std_peak_time_point"] = float(np.std(peak_time_points))
-    stats["min_peak_time_point"] = int(np.min(peak_time_points))
-    stats["max_peak_time_point"] = int(np.max(peak_time_points))
+    per_signal_min_overall = {
+        "peak_amplitude": float(np.min(per_signal_peak_amplitude)),
+        "min_amplitude": float(np.min(per_signal_min_amplitude)),
+        "signal_range": float(np.min(per_signal_signal_range)),
+        "std_amplitude": float(np.min(per_signal_std_amplitude))
+    }
 
-    print(f"  {name}: Mean={stats['global_mean']:.4f}, Std={stats['global_std']:.4f}, Min={stats['global_min']:.4f}, Max={stats['global_max']:.4f}")
-    return stats
+    per_signal_max_overall = {
+        "peak_amplitude": float(np.max(per_signal_peak_amplitude)),
+        "min_amplitude": float(np.max(per_signal_min_amplitude)),
+        "signal_range": float(np.max(per_signal_signal_range)),
+        "std_amplitude": float(np.max(per_signal_std_amplitude))
+    }
 
-# Process main signal arrays
-signal_statistics["X_train"] = get_signal_array_stats(X_train, "X_train")
-signal_statistics["X_valid"] = get_signal_array_stats(X_valid, "X_valid")
-signal_statistics["X_scan"] = get_signal_array_stats(X_scan, "X_scan (Full Scan)")
-signal_statistics["Xc"] = get_signal_array_stats(Xc, "Xc (Defect Signals)")
-signal_statistics["Xg"] = get_signal_array_stats(Xg, "Xg (Good Signals)")
+    array_statistics[name] = {
+        "global_statistics": global_stats,
+        "per_signal_average_characteristics": per_signal_average,
+        "per_signal_min_characteristics": per_signal_min_overall,
+        "per_signal_max_characteristics": per_signal_max_overall
+    }
 
-results["signal_statistics"] = signal_statistics
+results["array_statistics"] = array_statistics
 
-# Normalization factors (m, st)
-print("\n--- Normalization Factors (m, st) ---")
-normalization_factors = {
-    "m": {
-        "shape": list(m.shape),
-        "values_mean": float(np.mean(m)),
-        "values_std": float(np.std(m)),
-        "description": "Mean values across time points used for signal standardization. Subtract this from each time point."
+# Add normalization parameters m and st to the results
+results["normalization_parameters"] = {
+    "m_values": {
+        "shape": str(m.shape),
+        "mean": float(np.mean(m)),
+        "std": float(np.std(m)),
+        "min": float(np.min(m)),
+        "max": float(np.max(m))
     },
-    "st": {
-        "shape": list(st.shape),
-        "values_mean": float(np.mean(st)),
-        "values_std": float(np.std(st)),
-        "description": "Standard deviation values across time points used for signal standardization. Divide by this after subtracting mean."
+    "st_values": {
+        "shape": str(st.shape),
+        "mean": float(np.mean(st)),
+        "std": float(np.std(st)),
+        "min": float(np.min(st)),
+        "max": float(np.max(st))
     }
 }
-print(f"  m: Shape={normalization_factors['m']['shape']}, Global Mean={normalization_factors['m']['values_mean']:.4f}")
-print(f"  st: Shape={normalization_factors['st']['shape']}, Global Mean={normalization_factors['st']['values_mean']:.4f}")
-results["normalization_factors"] = normalization_factors
 
-# X_in_corr (spatial grid) information
-print("\n--- X_in_corr (Spatial Grid of Signals) Information ---")
-x_in_corr_info = {
-    "shape": list(X_in_corr.shape),
-    "rows_in_grid": int(X_in_corr.shape[0]),
-    "columns_in_grid": int(X_in_corr.shape[1]),
-    "time_points_per_signal_in_grid_cell": int(X_in_corr.shape[2]),
-    "total_signals_in_grid": int(X_in_corr.shape[0] * X_in_corr.shape[1]),
-    "description": "A 2D spatial grid where each cell contains a 500-point signal. This array specifically contains signals sampled from within corrosion regions, enabling visualization of defect areas as 'images' of signal features or for spatial analysis."
-}
-print(f"  X_in_corr: Shape={x_in_corr_info['shape']}, Represents a grid of {x_in_corr_info['rows_in_grid']}x{x_in_corr_info['columns_in_grid']} signals.")
-results["X_in_corr_info"] = x_in_corr_info
+# 3.4. Dataset summary and recommendations for model training
+summary_text = """
+This Pulsed Eddy Current Testing (PECT) Non-Destructive Testing (NDT) dataset offers a robust foundation
+for developing machine learning models to detect subsurface defects like corrosion.
 
+Key Dataset Observations:
+- **Signal Structure**: All signals are uniform, comprising 500 time points, representing a time-series voltage response.
+- **Data Segregation**: The dataset is clearly divided into training (X_train, y_train), validation (X_valid, y_valid),
+  and full scan (X_scan) sets, facilitating a standard machine learning workflow.
+- **Labeled Data**: Explicit labels (0 for good, 1 for defect) are provided for supervised learning.
+- **Pre-separated Classes**: 'Xg' (good) and 'Xc' (defect) arrays simplify direct analysis of class characteristics.
+- **Spatial Context**: 'X_in_corr' provides signals arranged in a 2D spatial grid (161x160), which is valuable for
+  visualizing defect locations or performing spatial analysis.
+- **Normalization Parameters**: 'm' (mean) and 'st' (standard deviation) arrays are provided for standardizing signals.
+  This indicates that signals should be normalized before being fed into most machine learning models.
 
-# Dataset Summary and Recommendations
-print("\n--- Dataset Summary and Recommendations ---")
-summary_and_recommendations = {
-    "summary": (
-        "This Pulsed Eddy Current Testing (PECT) Non-Destructive Testing (NDT) dataset provides time-series electromagnetic "
-        "signals for detecting subsurface defects. It includes separate training and validation sets with labels, "
-        "a full scan dataset, and pre-categorized 'good' and 'defect' signals. "
-        "Normalization parameters (mean and standard deviation) are also provided for preprocessing. "
-        "Each signal is a 1D waveform of 500 time points."
-    ),
-    "key_observations": [
-        "**Signal Structure**: All signals are 1D arrays of 500 time points, suitable for time-series analysis.",
-        f"**Training Set Distribution**: The training set `y_train` has {label_distribution['y_train']['Total']} samples, with {label_distribution['y_train']['Defect (1)'] / label_distribution['y_train']['Total']:.2%} signals from defect regions and {label_distribution['y_train']['Good (0)'] / label_distribution['y_train']['Total']:.2%} from good regions.",
-        f"**Validation Set Distribution**: Similarly, `y_valid` has {label_distribution['y_valid']['Total']} samples, with {label_distribution['y_valid']['Defect (1)'] / label_distribution['y_valid']['Total']:.2%} defect and {label_distribution['y_valid']['Good (0)'] / label_distribution['y_valid']['Total']:.2%} good.",
-        f"**Overall Class Imbalance**: The `Xc` (defect) set contains {Xc.shape[0]} signals, while `Xg` (good) contains {Xg.shape[0]} signals. This indicates a significant class imbalance towards good signals in the overall collection, which is also reflected in the training and validation sets.",
-        "**Signal Characteristics**: The comparison plot visually confirms distinct differences in pulse shape (e.g., amplitude decay, peak values, and signal range) between good and defective signals. Defect signals might exhibit shifted peaks, altered decay rates, or secondary peaks/undulations.",
-        "**Normalization Data**: The `m` and `st` arrays provide pre-computed per-time-point mean and standard deviation, which are crucial for standardizing input data for neural networks.",
-        "**Spatial Data (`X_in_corr`)**: `X_in_corr` offers a unique opportunity for spatial analysis, allowing the reconstruction of a 'defect map' by processing each signal in the grid. This can be used for defect localization or segmentation tasks."
-    ],
-    "recommendations_for_model_training": [
-        "**Preprocessing**: Apply Z-score normalization to all signal data (`X_train`, `X_valid`, `X_scan`) using the provided `m` and `st` arrays (`(signal - m) / st`). This is critical for optimizing deep learning model performance.",
-        "**Model Architecture**: Time-series specific models are highly recommended: 1D Convolutional Neural Networks (CNNs) for feature extraction, Recurrent Neural Networks (RNNs) like LSTMs or GRUs for sequential dependencies, or hybrid CNN-RNN models. Attention mechanisms (Transformers) could also be explored.",
-        "**Addressing Class Imbalance**: Given the significant imbalance towards 'good' signals, strategies like: \n  - **Weighted Loss Functions**: Assign higher weights to the minority (defect) class during training.\n  - **Oversampling/Undersampling**: Synthetically increase minority samples (e.g., SMOTE) or reduce majority samples.\n  - **Performance Metrics**: Prioritize metrics such as Precision, Recall, F1-score, and Area Under the Receiver Operating Characteristic (ROC-AUC) curve, which are more informative than simple accuracy for imbalanced datasets.",
-        "**Data Augmentation**: To improve model generalization and robustness, consider applying time-series specific augmentations such as small random shifts, scaling, time warping, or adding Gaussian noise.",
-        "**Evaluation**: Beyond model accuracy, visualize confusion matrices and plot ROC curves to understand the trade-offs between false positives and false negatives, especially for critical NDT applications.",
-        "**Advanced Analysis**: The `X_in_corr` array can be used to visualize defect regions by extracting relevant features (e.g., peak amplitude, decay rate, RMS value) from each signal in the grid and mapping them to a 2D image. This can assist in defect mapping and potentially enable image-based deep learning approaches for spatial defect detection."
-    ],
-    "path_to_signal_comparison_plot": signal_comparison_plot_path
-}
-results["summary_and_recommendations"] = summary_and_recommendations
+Signal Characteristics (as observed in 'signal_comparison.png' and statistics):
+- Defective signals typically exhibit different pulse shapes, decay rates, or amplitude shifts compared to good signals.
+  This distinctiveness is the basis for defect detection.
 
-# Save results to JSON file
+Recommendations for Model Training:
+- **Data Preprocessing**: Always apply the provided 'm' and 'st' for signal normalization: `normalized_signal = (signal - m) / st`.
+- **Model Architecture**:
+    - **1D Convolutional Neural Networks (CNNs)** are highly suitable for extracting features from time-series data like PECT signals.
+    - **Recurrent Neural Networks (RNNs)**, specifically LSTMs or GRUs, could also capture temporal dependencies.
+    - For high-level defect mapping, techniques that combine signal classification with spatial context from `X_in_corr` might be useful.
+- **Handling Class Imbalance**: The label distribution indicates a significant imbalance (more good signals than defect signals).
+  This is common in NDT. Strategies to address this include:
+    - **Weighted Loss Functions**: Assign higher weights to the minority class (defect) in the model's loss calculation.
+    - **Resampling Techniques**: Oversampling the minority class (e.g., SMOTE) or undersampling the majority class.
+    - **Performance Metrics**: Focus on metrics like F1-score, Precision, Recall, or Area Under the Receiver Operating Characteristic (AUC-ROC) curve, which are more informative than accuracy in imbalanced datasets.
+- **Validation Strategy**: Use the `X_valid` and `y_valid` sets for hyperparameter tuning, model selection, and early stopping to prevent overfitting.
+- **Interpretation**: Consider techniques for model interpretability (e.g., LIME, SHAP, attention mechanisms) to understand which parts of the signal contribute most to defect detection.
+"""
+results["dataset_summary_and_recommendations"] = summary_text
+
+# 3.5. Path to the saved comparison plot
+results["signal_comparison_plot_path"] = plot_path
+
+# Save results to JSON
 results_json_path = os.path.join(output_dir, 'results.json')
 with open(results_json_path, 'w') as f:
-    json.dump(results, f, indent=4) # Use indent for pretty printing JSON
-print(f"\nComprehensive analysis results saved to: {results_json_path}")
+    json.dump(results, f, indent=4) # Use indent for pretty printing
+print(f"Comprehensive statistics saved to {results_json_path}")
 
-print("\nAnalysis complete. Check the 'analysis/' directory for outputs.")
+print("\nAnalysis complete.")

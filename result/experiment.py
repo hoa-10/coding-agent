@@ -43,13 +43,10 @@ class_weight_dict = dict(zip(np.unique(y_train), class_weights))
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Input(shape=(500, 1)),
-    tf.keras.layers.Conv1D(filters=32, kernel_size=5, activation='relu', padding='same'),
-    tf.keras.layers.MaxPooling1D(pool_size=2, padding='same'),
-    tf.keras.layers.Conv1D(filters=64, kernel_size=5, activation='relu', padding='same'),
-    tf.keras.layers.MaxPooling1D(pool_size=2, padding='same'),
-    tf.keras.layers.Conv1D(filters=128, kernel_size=5, activation='relu', padding='same'),
-    tf.keras.layers.MaxPooling1D(pool_size=2, padding='same'),
-    tf.keras.layers.Flatten(),
+    tf.keras.layers.LSTM(64, return_sequences=True),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.LSTM(32),
+    tf.keras.layers.Dropout(0.2),
     tf.keras.layers.Dense(64, activation='relu'),
     tf.keras.layers.Dropout(0.5),
     tf.keras.layers.Dense(32, activation='relu'),
@@ -130,7 +127,7 @@ results_data = {
         "reduce_lr_patience": reduce_lr.patience,
         "reduce_lr_min_lr": reduce_lr.min_lr
     },
-    "model_architecture_description": "1D CNN with 3 Conv1D layers (32, 64, 128 filters, kernel size 5, relu activation, same padding), followed by MaxPooling1D (pool size 2, same padding). Flatten layer, then 2 Dense layers (64, 32 units, relu activation) with 0.5 dropout after each. Final Dense layer with 1 unit and sigmoid activation."
+    "model_architecture_description": "LSTM model with 2 LSTM layers (64 units, return_sequences=True; 32 units), with 0.2 dropout after each LSTM layer. Followed by 2 Dense layers (64, 32 units, relu activation) with 0.5 dropout after each. Final Dense layer with 1 unit and sigmoid activation."
 }
 
 with open(os.path.join(results_dir, 'results.json'), 'w') as f:

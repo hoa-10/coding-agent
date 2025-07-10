@@ -1,95 +1,100 @@
-Generate a Python script named `run_pipeline.py` that implements a deep learning pipeline for Non-Destructive Testing (NDT) signal classification. The script's objective is to classify time-series electromagnetic signals as 'good' (0) or 'defect' (1), addressing the significant class imbalance present in the dataset.
+Here is the prompt for the instruct LLM to generate the Python script:
+
+```
+You are an expert Python programmer specializing in machine learning and deep learning. Your task is to write a high-quality Python script named `run_pipeline.py` that implements an advanced deep learning pipeline for Non-Destructive Testing (NDT) signal analysis.
+
+The goal is to classify PECT (Pulsed Eddy Current Testing) signals as either 'good' (label 0) or 'defect' (label 1). The dataset exhibits significant class imbalance, with a much higher proportion of 'good' signals. The script must handle this imbalance appropriately and prioritize robust evaluation metrics.
 
 **Dataset Details:**
-The dataset is stored in a NumPy `.npz` file named `pect_ndt_full_dataset.npz`. The script must load the following arrays from this file:
-- `X_train`: Training signals (shape: `[15456, 500, 1]`, dtype: `float64`). Each signal is a 1D waveform of 500 time points.
-- `y_train`: Training labels (shape: `[15456]`, dtype: `int32`; `0` for good, `1` for defect).
-- `X_valid`: Validation signals (shape: `[10304, 500, 1]`, dtype: `float64`).
-- `y_valid`: Validation labels (shape: `[10304]`, dtype: `int32`).
-- `m`: Mean values for signal normalization (shape: `[1, 500, 1]`).
-- `st`: Standard deviation values for signal normalization (shape: `[1, 500, 1]`).
+The dataset is provided as a `.npz` file named `pect_ndt_full_dataset.npz`. It contains the following arrays:
+- `X_train`: (15456, 500, 1) float64 - Training signals.
+- `y_train`: (15456,) int32 - Training labels (0=good, 1=defect).
+- `X_valid`: (10304, 500, 1) float64 - Validation signals.
+- `y_valid`: (10304,) int32 - Validation labels (0=good, 1=defect).
+- `m`: (1, 500, 1) float64 - Mean values for normalization.
+- `st`: (1, 500, 1) float64 - Standard deviation values for normalization.
+(Other arrays like X_scan, X_in_corr, Xc, Xg are present but not directly used in this classification pipeline).
 
-**Required Code for Data Loading:**
+**Instructions for `run_pipeline.py`:**
+
+1.  **Fixed Seed for Reproducibility**:
+    *   Set a fixed random seed for NumPy and TensorFlow/Keras to ensure reproducibility of results. Use `42` as the seed.
+
+2.  **Data Loading**:
+    *   Load the dataset from `pect_ndt_full_dataset.npz` using `numpy.load()`.
+    *   Assign the loaded arrays to variables: `X_train`, `y_train`, `X_valid`, `y_valid`, `m`, `st`.
+    *   Include a check: If the file `pect_ndt_full_dataset.npz` is not found, print an informative error message and exit the script gracefully. Do NOT generate any dummy or random data.
+
+3.  **Data Preprocessing**:
+    *   **Normalization**: Apply the provided mean (`m`) and standard deviation (`st`) for normalization to both `X_train` and `X_valid`. The formula is `normalized_signal = (signal - m) / st`. The shapes of `m` and `st` are compatible for direct element-wise subtraction and division.
+
+4.  **Model Configuration (1D Convolutional Neural Network)**:
+    *   Use `tensorflow.keras` to build a 1D CNN model suitable for time-series classification.
+    *   **Input Shape**: The input shape for the model should be `(500, 1)`.
+    *   **Architecture**:
+        *   `Conv1D` layer (e.g., 64 filters, kernel size 5, `relu` activation).
+        *   `MaxPooling1D` layer (e.g., pool size 2).
+        *   `Conv1D` layer (e.g., 128 filters, kernel size 5, `relu` activation).
+        *   `MaxPooling1D` layer (e.g., pool size 2).
+        *   `Flatten` layer.
+        *   `Dense` layer (e.g., 128 units, `relu` activation).
+        *   `Dropout` layer (e.g., 0.5) for regularization.
+        *   `Dense` output layer (1 unit, `sigmoid` activation) for binary classification.
+    *   **Compile**: Compile the model with:
+        *   `optimizer='adam'` (or `Adam(learning_rate=0.001)`).
+        *   `loss='binary_crossentropy'`.
+        *   `metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), tf.keras.metrics.AUC()]`.
+
+5.  **Handling Class Imbalance**:
+    *   Calculate `class_weights` for the `BinaryCrossentropy` loss function using `sklearn.utils.class_weight.compute_class_weight`. This is crucial for the imbalanced dataset.
+    *   Pass these `class_weights` to the `model.fit()` method.
+
+6.  **Training Process**:
+    *   Train the model using `X_train` and `y_train`.
+    *   Use `X_valid` and `y_valid` for validation during training.
+    *   **Epochs**: 50
+    *   **Batch Size**: 64
+    *   **Callbacks**: Implement `EarlyStopping` to monitor validation loss with `patience=10` to prevent overfitting.
+    *   The `verbose` argument in `model.fit` can be set to 1 to show training progress.
+
+7.  **Evaluation**:
+    *   After training, evaluate the final trained model on the `X_valid` and `y_valid` dataset.
+    *   Compute the following metrics:
+        *   Accuracy
+        *   Precision
+        *   Recall
+        *   F1-Score
+        *   AUC-ROC score
+    *   Make sure to get predictions (`model.predict()`) and then calculate these metrics manually if Keras `evaluate` doesn't provide them all directly, especially F1-Score which needs `y_true` and `y_pred`. Use a threshold of 0.5 for binary classification from sigmoid outputs.
+
+8.  **Save Results**:
+    *   Create a directory named `result` if it does not already exist. Use `os.makedirs(..., exist_ok=True)`.
+    *   Save a JSON file named `results.json` inside the `result` directory.
+    *   This JSON file must contain:
+        *   All computed evaluation metrics (Accuracy, Precision, Recall, F1-Score, AUC-ROC).
+        *   A dictionary of the model's hyperparameters (e.g., optimizer, loss, learning rate, number of epochs, batch size, dropout rate, early stopping patience, Conv1D filter counts and kernel sizes, Dense layer units).
+
+**General Requirements for the Python Script:**
+*   **Modularity**: The script should be well-structured and easy to understand.
+*   **No Comments**: Do not include any comments in the generated Python script.
+*   **Limited External Libraries**: Prioritize widely-used libraries like `numpy`, `tensorflow`, `sklearn`, `json`, `os`. Avoid rarely used or hard-to-install libraries.
+*   **No Random Data Generation**: Absolutely do not generate any dummy, fake, or random data. Work only with the provided `pect_ndt_full_dataset.npz` file.
+
+**Start the script with the exact data loading code snippet provided previously:**
 ```python
 import numpy as np
-import os
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, auc
-import matplotlib.pyplot as plt
-import json
 
-# Set a fixed random seed for reproducibility of model initialization and training
-RANDOM_SEED = 42
-np.random.seed(RANDOM_SEED)
-tf.random.set_seed(RANDOM_SEED)
-
-try:
-    data = np.load('pect_ndt_full_dataset.npz')
-    X_train = data['X_train']
-    y_train = data['y_train']
-    X_valid = data['X_valid']
-    y_valid = data['y_valid']
-    m = data['m']
-    st = data['st']
-except FileNotFoundError:
-    print("Error: 'pect_ndt_full_dataset.npz' not found. Please ensure the dataset file is in the same directory.")
-    exit()
-except KeyError as e:
-    print(f"Error: Missing expected key in the dataset file: {e}. Please check the dataset integrity.")
-    exit()
+data = np.load('pect_ndt_full_dataset.npz')
+X_train = data['X_train']
+y_train = data['y_train']
+X_valid = data['X_valid']
+y_valid = data['y_valid']
+X_scan = data['X_scan']
+X_in_corr = data['X_in_corr']
+Xc = data['Xc']
+Xg = data['Xg']
+m = data['m']
+st = data['st']
 ```
-
-**Pipeline Steps:**
-
-1.  **Preprocessing:**
-    *   Apply Z-score normalization to `X_train` and `X_valid` using the provided `m` (mean) and `st` (standard deviation) arrays. The formula for normalization is `(X - m) / st`.
-    *   The signals are already in the correct 3D shape `(samples, time_points, features)` for 1D CNNs, so no further reshaping is required.
-    *   Ensure `y_train` and `y_valid` are suitable for binary classification (e.g., `int` type).
-
-2.  **Model Architecture (1D Convolutional Neural Network):**
-    *   Construct a TensorFlow/Keras 1D CNN model for binary classification of time series signals.
-    *   **Input Layer:** `Input(shape=(500, 1))` to match the signal dimensions.
-    *   **Convolutional Blocks:** Stack multiple blocks consisting of `Conv1D` layers (e.g., 32 to 128 filters, kernel size 3 or 5, `relu` activation), followed by `MaxPooling1D` layers (e.g., pool size 2) for feature extraction and downsampling.
-    *   **Flatten Layer:** After convolutional blocks, use a `Flatten` layer to convert the 3D output to 1D for dense layers.
-    *   **Dense Layers:** Add one or more `Dense` layers with `relu` activation (e.g., 64 or 32 units). Include `Dropout` layers (e.g., 0.5) for regularization.
-    *   **Output Layer:** A single `Dense` layer with `sigmoid` activation (`Dense(1, activation='sigmoid')`) for binary classification.
-
-3.  **Model Compilation:**
-    *   **Optimizer:** `Adam`.
-    *   **Loss Function:** `BinaryCrossentropy`.
-    *   **Metrics:** Compile the model with `accuracy`, `Precision(name='precision')`, `Recall(name='recall')`, and `AUC(name='auc')`.
-
-4.  **Addressing Class Imbalance:**
-    *   Calculate class weights for `y_train` based on the inverse of class frequencies. Pass these calculated weights to the `model.fit()` method using the `class_weight` argument. This helps the model pay more attention to the minority 'defect' class.
-
-5.  **Training Process:**
-    *   Train the CNN model using the preprocessed `X_train` and `y_train`.
-    *   Validate the model performance during training using `X_valid` and `y_valid`.
-    *   **Hyperparameters:**
-        *   `epochs`: 50
-        *   `batch_size`: 64
-    *   **Callbacks:**
-        *   `EarlyStopping`: Monitor `val_loss`, `patience=10`, `restore_best_weights=True`.
-        *   `ReduceLROnPlateau`: Monitor `val_loss`, `factor=0.5`, `patience=5`, `min_lr=0.00001`.
-
-6.  **Evaluation:**
-    *   After training, evaluate the model on the `X_valid` and `y_valid` datasets to obtain final performance metrics.
-    *   Compute and print the following metrics:
-        *   Accuracy
-        *   Precision (for class 1: defect)
-        *   Recall (for class 1: defect)
-        *   F1-Score (for class 1: defect)
-        *   ROC-AUC
-    *   **Confusion Matrix:** Generate and save a confusion matrix plot for the validation set. The plot should clearly label axes and title. Save it as `confusion_matrix.png` in the `results` directory.
-    *   **ROC Curve:** Generate and save an ROC curve plot for the validation set, showing the AUC score. Save it as `roc_curve.png` in the `results` directory.
-
-7.  **Save Results:**
-    *   Create a directory named `results` if it does not exist using `os.makedirs`.
-    *   Save a JSON file named `results.json` inside the `results` directory. This file must contain:
-        *   All computed evaluation metrics (Accuracy, Precision, Recall, F1-Score, ROC-AUC).
-        *   The hyperparameters used for training (epochs, batch_size, RANDOM_SEED, early stopping patience, learning rate reduction factor/patience, optimizer name).
-        *   A concise description of the model architecture (e.g., "1D CNN with 3 Conv1D layers (32, 64, 128 filters), 2 Dense layers (64, 32 units)").
-
-The script must be modular, adaptable, and solely use the provided data, without generating any random or synthetic data. Do not include notes or comments in the generated source code.
+End of prompt.
+```
