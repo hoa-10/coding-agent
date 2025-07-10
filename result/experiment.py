@@ -61,7 +61,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(),
                         tf.keras.metrics.Recall(name='recall'),
                         tf.keras.metrics.AUC(name='auc')])
 
-epochs = 30
+epochs = 10
 batch_size = 64
 
 early_stopping = tf.keras.callbacks.EarlyStopping(

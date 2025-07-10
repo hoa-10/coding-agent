@@ -1,6 +1,5 @@
 import os 
-from base_code.coding_loop_enhance import generate_instruct_prompt
-from base_code.processing_data import auto_analyze_with_retry
+
 from dotenv import load_dotenv
 from datetime import datetime
 from perform_experiment import perform_experiments
