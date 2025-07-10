@@ -64,44 +64,58 @@ this is the required code you must use when loading the dataset:
  Xg = data['Xg']
  m = data['m']
  st = data['st']
+ ```
+
 ---
 ## Task
 
 Write a Python script that:
 
 1. **Loads the `.npz` dataset** and prints the shape and type of each array.
-2. **Analyzes, visualize pulse signal characteristics** for each main array (e.g., X_train, Xc, Xg, X_scan), including:
-    - Basic statistics (mean, std, min, max, median)
-    - Distribution of labels (for y_train, y_valid)
-    - visualization to describe the different between signal pusle of two class. draw both signals fron both class in the same plot to show the difference. 
-3. **Saves a `results.json` file** in `analysis/` with:
-    - Dataset info: shapes, types, label distribution
-    - Extracted feature statistics (mean, std, min, max for each feature)
-    - Description of preprocessing steps (if any)
-    - Summary of findings and recommendations for model training (e.g., which features are most discriminative, any class imbalance, normalization advice)
-    - Paths to the saved plots
+
+2. **Creates a signal comparison visualization**:
+   - Select ONE representative sample from good signals (from Xg array)
+   - Select ONE representative sample from defect signals (from Xc array)  
+   - Plot both signals on the same graph with different colors:
+     - Blue line for good signal
+     - Red line for defect signal
+   - Add clear legend, axis labels (Time Points, Amplitude), and title
+   - Save the plot as `signal_comparison.png` in `analysis/figures/`
+   - The plot should clearly show the pulse shape differences between good and defective signals
+
+3. **Calculates and saves comprehensive statistics** to `results.json` in `analysis/`:
+   - Dataset information: shapes, types, and array descriptions
+   - Label distribution for training and validation sets
+   - Statistical analysis for each array:
+     - Basic statistics (mean, std, min, max, median) for signal arrays
+     - Signal characteristics (peak values, signal ranges, etc.)
+   - Dataset summary and recommendations for model training
+   - Path to the saved comparison plot
 
 ---
 
 ## Requirements
 
-- Use only the provided `.npz` file (do not generate random data).
-- Use numpy, matplotlib, seaborn, and json for analysis and visualization.
-- Ensure all plots are saved as `.png` in `analysis/figures/`.
-- The `results.json` must be well-structured and easy to parse for downstream code generation.
-- Provide clear comments and reasoning in the script for each analysis step.
+- **Focus on visual comparison**: The main goal is to create a clear visualization showing the difference between one good signal and one defective signal
+- Use only the provided `.npz` file (do not generate random data)
+- Use numpy, matplotlib, and json for analysis and visualization
+- Ensure the comparison plot is saved as `.png` in `analysis/figures/`
+- The `results.json` must contain comprehensive statistics but the visualization should be simple and clear
+- Provide clear comments explaining the signal selection and plotting process
+
 ---
 
 ## Notes
 
-- The script should be general and reusable for similar PECT-NDT datasets.
-- The analysis and plots should help a downstream user quickly understand the data and write code for model training.
-- All reasoning and recommendations should be included in the `results.json` for transparency and reproducibility.
+- The primary output should be a clear visual comparison of signal pulses
+- Choose representative samples that best show the characteristic differences between good and defective signals
+- All detailed statistics and analysis should be saved to JSON for programmatic access
+- The plot should be publication-ready with proper formatting and labels
 
 ### Requirements
-- Do **not** use random data or random seed and synthetic data; only analyze the provided `.npz` file.
-- Ensure `results.json` is well-structured and comprehensive for PECT-NDT data.
-- Focus on analyzing dataset characteristics, not a specific task like anomaly detection.
+- Do **not** use random data or random seed and synthetic data; only analyze the provided `.npz` file
+- Ensure `results.json` is well-structured and comprehensive for PECT-NDT data
+- Focus on creating one clear, informative comparison plot rather than multiple complex visualizations
 
 ---
 """

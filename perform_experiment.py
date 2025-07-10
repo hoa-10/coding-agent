@@ -12,7 +12,7 @@ import time
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 MAX_ITERS = 6
-MAX_RUNS = 2
+MAX_RUNS = 5
 MAX_STDERR_OUTPUT = 1500
 
 coder_prompt = """
